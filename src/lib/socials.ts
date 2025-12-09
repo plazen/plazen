@@ -65,12 +65,17 @@ async function publishToThreads(text: string) {
   }
 
   const containerUrl = `https://graph.threads.net/v1.0/${userId}/threads`;
-  const containerRes = await fetch(
-    `${containerUrl}?media_type=TEXT&text=${encodeURIComponent(text)}&access_token=${accessToken}`,
-    {
-      method: "POST",
+  const containerRes = await fetch(containerUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
     },
-  );
+    body: JSON.stringify({
+      media_type: "TEXT",
+      text: text,
+    }),
+  });
 
   if (!containerRes.ok) {
     const error = await containerRes.text();
@@ -84,14 +89,17 @@ async function publishToThreads(text: string) {
 
   await waitForContainer(creationId, accessToken);
 
-  // Step 3: Publish
   const publishUrl = `https://graph.threads.net/v1.0/${userId}/threads_publish`;
-  const publishRes = await fetch(
-    `${publishUrl}?creation_id=${creationId}&access_token=${accessToken}`,
-    {
-      method: "POST",
+  const publishRes = await fetch(publishUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
     },
-  );
+    body: JSON.stringify({
+      creation_id: creationId,
+    }),
+  });
 
   if (!publishRes.ok) {
     const error = await publishRes.text();
