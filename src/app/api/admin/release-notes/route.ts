@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { publishToSocials } from "@/lib/socials"; // Import the new helper
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,7 @@ async function isAdmin() {
           return cookieStore.get(name)?.value;
         },
       },
-    }
+    },
   );
 
   const {
@@ -52,7 +53,7 @@ export async function GET() {
           error instanceof Error ? error.message : "Unknown error"
         }`,
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -69,7 +70,7 @@ export async function POST(request: Request) {
     if (!topic || !version || !text || !date) {
       return NextResponse.json(
         { error: "Missing required fields" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -82,12 +83,18 @@ export async function POST(request: Request) {
       },
     });
 
+    publishToSocials({
+      id: newNote.id,
+      version: newNote.version || version,
+      topic: newNote.topic || topic,
+    }).catch((err) => console.error("Background social publish failed:", err));
+
     return NextResponse.json(newNote, { status: 201 });
   } catch (error) {
     console.error("Error creating release note:", error);
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

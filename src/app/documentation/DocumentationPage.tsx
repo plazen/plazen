@@ -75,26 +75,62 @@ export default function DocumentationPage() {
             opacity: 0.9;
           }
 
-          /* Make prose lists use variable colors for text and markers (bullets) */
+          /* Responsive, theme-aware headings for documentation pages */
+          /* Ensure markdown-rendered <h1> inside .prose-custom is covered */
+          .prose-custom h1,
+          .doc-title {
+            font-size: clamp(28px, 4.8vw, 44px);
+            line-height: 1.08;
+            margin-top: 0.25em;
+            margin-bottom: 0.5em;
+            color: var(--color-doc-text) !important;
+            font-weight: 700;
+          }
+
+          /* h2 used by both prose and doc-heading elements */
+          .prose-custom h2,
+          .doc-heading {
+            font-size: clamp(22px, 3.2vw, 30px);
+            line-height: 1.12;
+            margin-top: 0.9em;
+            margin-bottom: 0.5em;
+            color: var(--color-doc-text) !important;
+            font-weight: 700;
+          }
+
+          /* h3 sizing and color */
+          .prose-custom h3 {
+            font-size: clamp(18px, 2.6vw, 20px);
+            line-height: 1.18;
+            margin-top: 0.8em;
+            margin-bottom: 0.5em;
+            color: var(--color-doc-text) !important;
+            font-weight: 600;
+          }
+
+          /* Prose list text and markers use theme variables */
           .prose ul li,
-          .prose ol li {
-            color: var(--color-foreground);
+          .prose ol li,
+          .not-prose ul li,
+          .not-prose ol li {
+            color: var(--color-doc-text);
           }
 
           .prose ul li::marker,
-          .prose ol li::marker {
-            color: var(--color-muted-foreground);
-          }
-
-          /* Ensure not-prose sections with lists get the same treatment */
-          .not-prose ul li,
-          .not-prose ol li {
-            color: var(--color-foreground);
-          }
-
+          .prose ol li::marker,
           .not-prose ul li::marker,
-          .not-prose ol li::marker {
-            color: var(--color-muted-foreground);
+          .not-prose ol li::marker,
+          .notification-markdown li::marker {
+            color: var(--color-doc-bullet);
+          }
+
+          /* Fallback: ensure prose base text follows doc variable */
+          .prose,
+          .prose h1,
+          .prose h2,
+          .prose h3,
+          .prose p {
+            color: var(--color-doc-text);
           }
         `}
       </style>
