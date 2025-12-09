@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { publishToSocials } from "@/lib/socials"; // Import the new helper
+import { publishToSocials } from "@/lib/socials";
 
 export const dynamic = "force-dynamic";
 
@@ -83,11 +83,18 @@ export async function POST(request: Request) {
       },
     });
 
-    publishToSocials({
-      id: newNote.id,
-      version: newNote.version || version,
-      topic: newNote.topic || topic,
-    }).catch((err) => console.error("Background social publish failed:", err));
+    try {
+      await publishToSocials({
+        id: newNote.id,
+        version: newNote.version || version,
+        topic: newNote.topic || topic,
+      });
+    } catch (socialError) {
+      console.error(
+        "Failed to publish to socials, but note was saved:",
+        socialError,
+      );
+    }
 
     return NextResponse.json(newNote, { status: 201 });
   } catch (error) {
