@@ -146,6 +146,7 @@ export default function AccountPage() {
     type: "success" | "error";
     text: string;
   } | null>(null);
+  const [copiedId, setCopiedId] = useState(false);
 
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [newPassword, setNewPassword] = useState("");
@@ -881,9 +882,39 @@ export default function AccountPage() {
                       </>
                     )}
                   </div>
-                  <p className="text-muted-foreground flex items-center gap-2 mt-1">
-                    <Mail className="w-4 h-4" /> {user.email}
-                  </p>
+                  <div className="flex items-center gap-3 mt-1">
+                    <p className="text-muted-foreground flex items-center gap-2">
+                      <Mail className="w-4 h-4" /> {user.email}
+                    </p>
+
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={async () => {
+                          if (!user?.id) return;
+                          try {
+                            await navigator.clipboard.writeText(user.id);
+                            setCopiedId(true);
+                            setTimeout(() => setCopiedId(false), 2000);
+                          } catch (err) {
+                            setCopiedId(false);
+                          }
+                        }}
+                        className="h-7 px-2"
+                      >
+                        {copiedId ? (
+                          <>
+                            <Check className="w-4 h-4 mr-2" /> Copied!
+                          </>
+                        ) : (
+                          <>
+                            <UserIcon className="w-4 h-4 mr-2" /> Copy ID
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
                   <input
                     type="file"
                     accept="image/*"

@@ -38,12 +38,46 @@ export default function ReleaseNotesPage() {
     <div className="font-lexend">
       <style>
         {`
+          /* Hover heading color (keeps existing behavior) */
           .note-item:hover h2 {
             color: var(--color-primary);
           }
+
+          /* Root for release notes so we can use CSS variables for text and list markers */
+          .release-notes-root {
+            background: var(--color-background);
+            color: var(--color-foreground);
+          }
+
+          /* Typography inside the prose should use our color variables */
+          .release-notes-root .prose h1,
+          .release-notes-root .prose h2 {
+            color: var(--color-foreground);
+          }
+
+          .release-notes-root .prose p,
+          .release-notes-root .prose .text-muted,
+          .release-notes-root .note-meta {
+            color: var(--color-muted-foreground);
+          }
+
+          /* Lists: use foreground for text, and primary (or muted) for the bullet/marker */
+          .release-notes-root .prose ul,
+          .release-notes-root .prose ol {
+            color: var(--color-foreground);
+          }
+
+          /* Set the marker (bullet/number) color using ::marker */
+          .release-notes-root .prose li::marker {
+            color: var(--color-primary);
+          }
+
+          /* If you prefer subtler markers, switch to muted:
+             .release-notes-root .prose li::marker { color: var(--color-muted-foreground); }
+          */
         `}
       </style>
-      <div className="bg-background text-gray-300 min-h-screen p-8 md:p-12 lg:p-16">
+      <div className="bg-background text-gray-300 min-h-screen p-8 md:p-12 lg:p-16 release-notes-root">
         <div className="max-w-3xl mx-auto">
           <Link href="/schedule" className="flex items-center gap-3 mb-8 group">
             <PlazenLogo />

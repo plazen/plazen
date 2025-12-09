@@ -1,230 +1,295 @@
+@import url("https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600&display=swap");
 @import "tailwindcss";
 @import "tw-animate-css";
-@import url("https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600&display=swap");
+
+/*
+  Added variables and styles so Release Notes and Documentation pages
+  can use configurable CSS variables (set here) for text and bullet colors.
+  You can override these per-theme below or in theme-specific overrides.
+*/
 
 @theme {
-  --radius: 12px;
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-  --radius-2xl: calc(var(--radius) + 8px);
+    --radius: 12px;
+    --radius-sm: calc(var(--radius) - 4px);
+    --radius-md: calc(var(--radius) - 2px);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) + 4px);
+    --radius-2xl: calc(var(--radius) + 8px);
 
-  /* Dark theme colors (default) */
-  --color-background: oklch(0.12 0.01 240);
-  --color-foreground: oklch(0.95 0.01 240);
-  --color-card: oklch(0.15 0.01 240);
-  --color-card-foreground: oklch(0.95 0.01 240);
-  --color-popover: oklch(0.15 0.01 240);
-  --color-popover-foreground: oklch(0.95 0.01 240);
-  --color-primary: oklch(0.7 0.1 190);
-  --color-primary-foreground: oklch(0.1 0.01 240);
-  --color-secondary: oklch(0.2 0.01 240);
-  --color-secondary-foreground: oklch(0.95 0.01 240);
-  --color-muted: oklch(0.2 0.01 240);
-  --color-muted-foreground: oklch(0.6 0.01 240);
-  --color-accent: oklch(0.7 0.1 190 / 0.1);
-  --color-accent-foreground: oklch(0.7 0.1 190);
-  --color-destructive: oklch(0.5 0.2 25);
-  --color-border: oklch(1 0 0 / 0.1);
-  --color-input: oklch(0.18 0.01 240);
-  --color-ring: oklch(0.7 0.1 190);
+    /* Dark theme colors (default) */
+    --color-background: oklch(0.12 0.01 240);
+    --color-foreground: oklch(0.95 0.01 240);
+    --color-card: oklch(0.15 0.01 240);
+    --color-card-foreground: oklch(0.95 0.01 240);
+    --color-popover: oklch(0.15 0.01 240);
+    --color-popover-foreground: oklch(0.95 0.01 240);
+    --color-primary: oklch(0.7 0.1 190);
+    --color-primary-foreground: oklch(0.1 0.01 240);
+    --color-secondary: oklch(0.2 0.01 240);
+    --color-secondary-foreground: oklch(0.95 0.01 240);
+    --color-muted: oklch(0.2 0.01 240);
+    --color-muted-foreground: oklch(0.6 0.01 240);
+    --color-accent: oklch(0.7 0.1 190 / 0.1);
+    --color-accent-foreground: oklch(0.7 0.1 190);
+    --color-destructive: oklch(0.5 0.2 25);
+    --color-border: oklch(1 0 0 / 0.1);
+    --color-input: oklch(0.18 0.01 240);
+    --color-ring: oklch(0.7 0.1 190);
+
+    --color-release-text: var(--color-foreground);
+    --color-release-bullet: var(--color-muted-foreground);
+    --color-doc-text: var(--color-foreground);
+    --color-doc-bullet: var(--color-muted-foreground);
 }
 
 html {
-  scroll-behavior: smooth;
-  scroll-snap-type: y mandatory;
+    scroll-behavior: smooth;
+    scroll-snap-type: y mandatory;
 }
 
 * {
-  scroll-behavior: smooth;
-  font-family: "Lexend", sans-serif;
+    scroll-behavior: smooth;
+    font-family: "Lexend", sans-serif;
 }
 
 body {
-  background: var(--color-background);
-  color: var(--color-foreground);
-  font-family: "Lexend", sans-serif;
+    background: var(--color-background);
+    color: var(--color-foreground);
+    font-family: "Lexend", sans-serif;
 }
 
 .font-lexend {
-  font-family: "Lexend", sans-serif;
+    font-family: "Lexend", sans-serif;
 }
 
 /* Custom Scrollbar for a cleaner look */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+    width: 8px;
+    height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background-color: transparent;
+    background-color: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background-color: rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-  border: 2px solid transparent;
-  background-clip: content-box;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    border: 2px solid transparent;
+    background-clip: content-box;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(255, 255, 255, 0.2);
+    background-color: rgba(255, 255, 255, 0.2);
 }
 
 /* Light theme override */
 .light {
-  --color-background: oklch(0.98 0.005 240);
-  --color-foreground: oklch(0.15 0.01 240);
-  --color-card: oklch(1 0 0);
-  --color-card-foreground: oklch(0.15 0.01 240);
-  --color-popover: oklch(1 0 0);
-  --color-popover-foreground: oklch(0.15 0.01 240);
-  --color-primary: oklch(0.5 0.15 220);
-  --color-primary-foreground: oklch(0.98 0.005 240);
-  --color-secondary: oklch(0.95 0.005 240);
-  --color-secondary-foreground: oklch(0.15 0.01 240);
-  --color-muted: oklch(0.95 0.005 240);
-  --color-muted-foreground: oklch(0.45 0.01 240);
-  --color-accent: oklch(0.5 0.15 220 / 0.1);
-  --color-accent-foreground: oklch(0.5 0.15 220);
-  --color-destructive: oklch(0.55 0.2 25);
-  --color-border: oklch(0.85 0.005 240);
-  --color-input: oklch(0.98 0.005 240);
-  --color-ring: oklch(0.5 0.15 220);
+    --color-background: oklch(0.98 0.005 240);
+    --color-foreground: oklch(0.15 0.01 240);
+    --color-card: oklch(1 0 0);
+    --color-card-foreground: oklch(0.15 0.01 240);
+    --color-popover: oklch(1 0 0);
+    --color-popover-foreground: oklch(0.15 0.01 240);
+    --color-primary: oklch(0.5 0.15 220);
+    --color-primary-foreground: oklch(0.98 0.005 240);
+    --color-secondary: oklch(0.95 0.005 240);
+    --color-secondary-foreground: oklch(0.15 0.01 240);
+    --color-muted: oklch(0.95 0.005 240);
+    --color-muted-foreground: oklch(0.45 0.01 240);
+    --color-accent: oklch(0.5 0.15 220 / 0.1);
+    --color-accent-foreground: oklch(0.5 0.15 220);
+    --color-destructive: oklch(0.55 0.2 25);
+    --color-border: oklch(0.85 0.005 240);
+    --color-input: oklch(0.98 0.005 240);
+    --color-ring: oklch(0.5 0.15 220);
+
+    --color-release-text: var(--color-foreground);
+    --color-release-bullet: var(--color-muted-foreground);
+    --color-doc-text: var(--color-foreground);
+    --color-doc-bullet: var(--color-muted-foreground);
 }
 
 /* Light theme scrollbar */
 .light ::-webkit-scrollbar-thumb {
-  background-color: rgba(0, 0, 0, 0.1);
+    background-color: rgba(0, 0, 0, 0.1);
 }
 
 .light ::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(0, 0, 0, 0.2);
+    background-color: rgba(0, 0, 0, 0.2);
 }
 
 /* Dark theme explicit (same as default but for clarity) */
 .dark {
-  --color-background: oklch(0.12 0.01 240);
-  --color-foreground: oklch(0.95 0.01 240);
-  --color-card: oklch(0.15 0.01 240);
-  --color-card-foreground: oklch(0.95 0.01 240);
-  --color-popover: oklch(0.15 0.01 240);
-  --color-popover-foreground: oklch(0.95 0.01 240);
-  --color-primary: oklch(0.7 0.1 190);
-  --color-primary-foreground: oklch(0.1 0.01 240);
-  --color-secondary: oklch(0.2 0.01 240);
-  --color-secondary-foreground: oklch(0.95 0.01 240);
-  --color-muted: oklch(0.2 0.01 240);
-  --color-muted-foreground: oklch(0.6 0.01 240);
-  --color-accent: oklch(0.7 0.1 190 / 0.1);
-  --color-accent-foreground: oklch(0.7 0.1 190);
-  --color-destructive: oklch(0.5 0.2 25);
-  --color-border: oklch(1 0 0 / 0.1);
-  --color-input: oklch(0.18 0.01 240);
-  --color-ring: oklch(0.7 0.1 190);
+    --color-background: oklch(0.12 0.01 240);
+    --color-foreground: oklch(0.95 0.01 240);
+    --color-card: oklch(0.15 0.01 240);
+    --color-card-foreground: oklch(0.95 0.01 240);
+    --color-popover: oklch(0.15 0.01 240);
+    --color-popover-foreground: oklch(0.95 0.01 240);
+    --color-primary: oklch(0.7 0.1 190);
+    --color-primary-foreground: oklch(0.1 0.01 240);
+    --color-secondary: oklch(0.2 0.01 240);
+    --color-secondary-foreground: oklch(0.95 0.01 240);
+    --color-muted: oklch(0.2 0.01 240);
+    --color-muted-foreground: oklch(0.6 0.01 240);
+    --color-accent: oklch(0.7 0.1 190 / 0.1);
+    --color-accent-foreground: oklch(0.7 0.1 190);
+    --color-destructive: oklch(0.5 0.2 25);
+    --color-border: oklch(1 0 0 / 0.1);
+    --color-input: oklch(0.18 0.01 240);
+    --color-ring: oklch(0.7 0.1 190);
+
+    /* Dark theme overrides for new page variables (optional) */
+    --color-release-text: var(--color-foreground);
+    --color-release-bullet: var(--color-muted-foreground);
+    --color-doc-text: var(--color-foreground);
+    --color-doc-bullet: var(--color-muted-foreground);
 }
 
 /* Supabase Auth UI Custom Styles */
 .supabase-auth-ui_ui {
-  --auth-ui-primary: var(--color-primary);
-  --auth-ui-background: var(--color-card);
-  --auth-ui-foreground: var(--color-foreground);
-  --auth-ui-border: var(--color-border);
-  --auth-ui-input-background: var(--color-input);
+    --auth-ui-primary: var(--color-primary);
+    --auth-ui-background: var(--color-card);
+    --auth-ui-foreground: var(--color-foreground);
+    --auth-ui-border: var(--color-border);
+    --auth-ui-input-background: var(--color-input);
 }
 
 /* Make social auth buttons square and icon-only */
 .supabase-auth-ui_ui button[data-supabase-auth-type="social"] {
-  min-width: 48px !important;
-  width: 48px !important;
-  height: 48px !important;
-  padding: 0 !important;
-  border-radius: 12px !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  margin: 4px !important;
-  transition: all 0.2s ease !important;
+    min-width: 48px !important;
+    width: 48px !important;
+    height: 48px !important;
+    padding: 0 !important;
+    border-radius: 12px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin: 4px !important;
+    transition: all 0.2s ease !important;
 }
 
 /* Hide text in social buttons, keep only icons */
 .supabase-auth-ui_ui button[data-supabase-auth-type="social"] span {
-  font-size: 0 !important;
-  line-height: 0 !important;
-  overflow: hidden !important;
+    font-size: 0 !important;
+    line-height: 0 !important;
+    overflow: hidden !important;
 }
 
 /* Make sure icons are visible */
 .supabase-auth-ui_ui button[data-supabase-auth-type="social"] svg,
 .supabase-auth-ui_ui button[data-supabase-auth-type="social"] img {
-  width: 20px !important;
-  height: 20px !important;
-  margin: 0 !important;
+    width: 20px !important;
+    height: 20px !important;
+    margin: 0 !important;
 }
 
 /* Container for social buttons to display in a grid */
 .supabase-auth-ui_ui .supabase-auth-ui_ui-social-auth {
-  display: flex !important;
-  flex-wrap: wrap !important;
-  justify-content: center !important;
-  gap: 8px !important;
-  margin-bottom: 16px !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    margin-bottom: 16px !important;
 }
 
 /* Hover effects for social buttons */
 .supabase-auth-ui_ui button[data-supabase-auth-type="social"]:hover {
-  opacity: 0.8 !important;
-  transform: translateY(-1px) !important;
+    opacity: 0.8 !important;
+    transform: translateY(-1px) !important;
 }
 
 /* Focus states */
 .supabase-auth-ui_ui button[data-supabase-auth-type="social"]:focus {
-  outline: 2px solid var(--color-primary) !important;
-  outline-offset: 2px !important;
+    outline: 2px solid var(--color-primary) !important;
+    outline-offset: 2px !important;
 }
 
 /* Form styling improvements */
 .supabase-auth-ui_ui input {
-  background: var(--color-input) !important;
-  border: 1px solid var(--color-border) !important;
-  color: var(--color-foreground) !important;
-  border-radius: 8px !important;
+    background: var(--color-input) !important;
+    border: 1px solid var(--color-border) !important;
+    color: var(--color-foreground) !important;
+    border-radius: 8px !important;
 }
 
 .supabase-auth-ui_ui input:focus {
-  border-color: var(--color-primary) !important;
-  box-shadow: 0 0 0 2px var(--color-primary) !important;
+    border-color: var(--color-primary) !important;
+    box-shadow: 0 0 0 2px var(--color-primary) !important;
 }
 
 .supabase-auth-ui_ui label {
-  color: var(--color-foreground) !important;
-  font-weight: 500 !important;
+    color: var(--color-foreground) !important;
+    font-weight: 500 !important;
 }
 
 .supabase-auth-ui_ui .supabase-auth-ui_ui-divider {
-  background: var(--color-border) !important;
-  margin: 16px 0 !important;
+    background: var(--color-border) !important;
+    margin: 16px 0 !important;
 }
 
+/* Notification markdown defaults */
 .notification-markdown a {
-  text-decoration: underline;
-  text-underline-offset: 4px;
-  color: var(--color-ring); /* Or a specific blue if you prefer */
+    text-decoration: underline;
+    text-underline-offset: 4px;
+    color: var(--color-ring); /* Or a specific blue if you prefer */
 }
 
 .notification-markdown a:hover {
-  opacity: 0.8;
+    opacity: 0.8;
 }
 
 .notification-markdown p {
-  margin: 0;
+    margin: 0;
 }
 .notification-markdown ul,
 .notification-markdown ol {
-  margin: 0.5em 0 0.5em 1.5em;
-  padding-left: 0.5em;
+    margin: 0.5em 0 0.5em 1.5em;
+    padding-left: 0.5em;
 }
 .notification-markdown li {
-  margin-bottom: 0.25em;
+    margin-bottom: 0.25em;
+}
+
+.note-item,
+.note-item h1,
+.note-item h2,
+.note-item h3,
+.note-item p,
+.prose .note-item {
+    color: var(--color-release-text) !important;
+}
+
+.prose,
+.prose h1,
+.prose h2,
+.prose h3,
+.prose p {
+    color: var(--color-doc-text);
+}
+
+.prose ul,
+.prose ol,
+.notification-markdown ul,
+.notification-markdown ol {
+    color: inherit; /* keep text color consistent */
+}
+
+.prose ul li::marker,
+.prose ol li::marker,
+.notification-markdown li::marker {
+    color: var(--color-release-bullet);
+}
+
+.prose ul li,
+.prose ol li,
+.notification-markdown li {
+    /* keep spacing consistent */
+}
+
+.note-item:hover h2,
+.prose a:hover,
+.note-item a:hover {
+    color: var(--color-primary);
 }
