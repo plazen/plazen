@@ -25,6 +25,7 @@
     --color-popover-foreground: oklch(0.95 0.01 240);
     --color-primary: oklch(0.7 0.1 190);
     --color-primary-foreground: oklch(0.1 0.01 240);
+    --color-primary-dark: oklch(0.55 0.12 200);
     --color-secondary: oklch(0.2 0.01 240);
     --color-secondary-foreground: oklch(0.95 0.01 240);
     --color-muted: oklch(0.2 0.01 240);
@@ -93,6 +94,7 @@ body {
     --color-popover-foreground: oklch(0.15 0.01 240);
     --color-primary: oklch(0.5 0.15 220);
     --color-primary-foreground: oklch(0.98 0.005 240);
+    --color-primary-dark: oklch(0.35 0.18 210);
     --color-secondary: oklch(0.95 0.005 240);
     --color-secondary-foreground: oklch(0.15 0.01 240);
     --color-muted: oklch(0.95 0.005 240);
@@ -129,6 +131,7 @@ body {
     --color-popover-foreground: oklch(0.95 0.01 240);
     --color-primary: oklch(0.7 0.1 190);
     --color-primary-foreground: oklch(0.1 0.01 240);
+    --color-primary-dark: oklch(0.6 0.12 190);
     --color-secondary: oklch(0.2 0.01 240);
     --color-secondary-foreground: oklch(0.95 0.01 240);
     --color-muted: oklch(0.2 0.01 240);
@@ -240,6 +243,54 @@ body {
     opacity: 0.8;
 }
 
+/* Global back-link utility using the darker primary shade for hover/focus */
+.back-link {
+    color: var(--color-primary);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    -webkit-tap-highlight-color: transparent; /* remove tap highlight on mobile */
+    -webkit-user-select: text;
+    user-select: text;
+    transition:
+        color 0.15s ease,
+        box-shadow 0.15s ease;
+}
+/* Remove pseudo-icon: we render lucide-react icons in the JSX instead */
+
+/* Hover: only change color (no underline, no outline, no box-shadow) */
+.back-link:hover {
+    color: var(--color-primary-dark) !important;
+    text-decoration: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+/* Active / mouse press: do not show focus outline or default browser tap rectangle */
+.back-link:active,
+.back-link::-moz-focus-inner {
+    outline: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+}
+
+/* Focus (mouse): keep no visual change so clicking doesn't show a rectangle */
+.back-link:focus {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+/* Focus-visible (keyboard only): show a rounded subtle ring using box-shadow */
+.back-link:focus-visible {
+    color: var(--color-primary-dark) !important;
+    text-decoration: none !important;
+    background: transparent !important;
+    outline: none !important;
+    border-radius: 8px;
+    box-shadow: 0 0 0 4px var(--color-primary-dark);
+}
+
 .notification-markdown p {
     margin: 0;
 }
@@ -261,12 +312,63 @@ body {
     color: var(--color-release-text) !important;
 }
 
+/* Ensure prose and prose-invert headings use theme variables and override other defaults */
 .prose,
 .prose h1,
 .prose h2,
 .prose h3,
-.prose p {
-    color: var(--color-doc-text);
+.prose p,
+.prose-invert h1,
+.prose-invert h2,
+.prose-invert h3,
+.prose-invert p {
+    color: var(--color-doc-text) !important;
+}
+
+/* Heading sizes that scale depending on header level (theme-aware) */
+.prose h1,
+.prose-invert h1,
+.note-item h1 {
+    font-size: clamp(28px, 4.8vw, 44px);
+    line-height: 1.08;
+    margin-top: 0.25em;
+    margin-bottom: 0.5em;
+    color: var(--color-doc-text) !important;
+}
+
+.prose h2,
+.prose-invert h2,
+.note-item h2 {
+    font-size: clamp(22px, 3.2vw, 30px);
+    line-height: 1.12;
+    margin-top: 0.9em;
+    margin-bottom: 0.5em;
+    color: var(--color-doc-text) !important;
+}
+
+.prose h3,
+.prose-invert h3,
+.note-item h3 {
+    font-size: clamp(18px, 2.6vw, 20px);
+    line-height: 1.18;
+    margin-top: 0.8em;
+    margin-bottom: 0.5em;
+    color: var(--color-doc-text) !important;
+}
+
+/* Release notes override: ensure release notes h1/h2 use release-specific variable */
+.release-notes-root .prose h1,
+.release-notes-root .prose h2 {
+    color: var(--color-release-text) !important;
+}
+
+/* List marker (bullets/numbers) theme-aware across prose variants */
+.prose ul li::marker,
+.prose ol li::marker,
+.prose-invert ul li::marker,
+.prose-invert ol li::marker,
+.notification-markdown li::marker {
+    color: var(--color-doc-bullet);
 }
 
 .prose ul,

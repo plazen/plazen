@@ -43,6 +43,13 @@ export default function ReleaseNotesPage() {
             color: var(--color-primary);
           }
 
+          /* Note card hover: do not change background or elevation; only adjust border color using theme variable */
+          .note-item:hover {
+            background: transparent !important;
+            box-shadow: none !important;
+            border-color: var(--color-primary) !important;
+          }
+
           /* Root for release notes so we can use CSS variables for text and list markers */
           .release-notes-root {
             background: var(--color-background);
@@ -61,23 +68,21 @@ export default function ReleaseNotesPage() {
             color: var(--color-muted-foreground);
           }
 
-          /* Lists: use foreground for text, and primary (or muted) for the bullet/marker */
+          /* Lists: use foreground for text, and release-specific variable for the bullet/marker */
           .release-notes-root .prose ul,
           .release-notes-root .prose ol {
             color: var(--color-foreground);
           }
 
-          /* Set the marker (bullet/number) color using ::marker */
+          /* Set the marker (bullet/number) color using the release variable */
           .release-notes-root .prose li::marker {
-            color: var(--color-primary);
+            color: var(--color-release-bullet);
           }
 
-          /* If you prefer subtler markers, switch to muted:
-             .release-notes-root .prose li::marker { color: var(--color-muted-foreground); }
-          */
+          /* If you prefer primary markers change above to var(--color-primary) */
         `}
       </style>
-      <div className="bg-background text-gray-300 min-h-screen p-8 md:p-12 lg:p-16 release-notes-root">
+      <div className="bg-background text-foreground min-h-screen p-8 md:p-12 lg:p-16 release-notes-root">
         <div className="max-w-3xl mx-auto">
           <Link href="/schedule" className="flex items-center gap-3 mb-8 group">
             <PlazenLogo />
@@ -87,10 +92,10 @@ export default function ReleaseNotesPage() {
           </Link>
 
           <article className="prose prose-invert prose-lg max-w-none">
-            <h1 className="text-4xl font-bold text-white mb-6">
+            <h1 className="text-4xl font-bold text-foreground mb-6">
               Release Notes
             </h1>
-            <p className="text-gray-400">
+            <p className="text-muted-foreground">
               See what&apos;s new, what&apos;s fixed, and what&apos;s improved
               in Plazen.
             </p>
@@ -107,9 +112,9 @@ export default function ReleaseNotesPage() {
                     key={note.id}
                     className="block no-underline note-item group"
                   >
-                    <div className="p-6 border border-border rounded-xl transition-all duration-200 hover:border-primary/50 hover:shadow-lg bg-card/50 hover:bg-card">
+                    <div className="p-6 border border-border rounded-xl transition-colors duration-200 bg-card/50">
                       <div className="flex justify-between items-center mb-2">
-                        <h2 className="text-2xl font-semibold text-white !m-0 !p-0 !border-0 transition-colors duration-200">
+                        <h2 className="text-2xl font-semibold text-foreground !m-0 !p-0 !border-0 transition-colors duration-200">
                           {note.topic}
                         </h2>
                         <span className="text-sm font-medium px-3 py-1 bg-primary/10 text-primary rounded-full flex-shrink-0">

@@ -25,7 +25,7 @@ export default function App() {
             }
           `}
         </style>
-        <div className="bg-black text-gray-300 min-h-screen p-8 md:p-12 lg:p-16">
+        <div className="bg-background text-foreground min-h-screen p-8 md:p-12 lg:p-16">
           <div className="max-w-3xl mx-auto">
             <Link
               href="/schedule"
@@ -37,10 +37,12 @@ export default function App() {
               </span>
             </Link>
             <article className="prose prose-invert prose-lg max-w-none">
-              <h1 className="text-4xl font-bold text-white mb-4">
+              <h1 className="text-4xl font-bold text-foreground mb-4">
                 Privacy Policy
               </h1>
-              <p className="text-gray-400">Effective Date: November 10, 2025</p>
+              <p className="text-muted-foreground">
+                Effective Date: November 10, 2025
+              </p>
               <h3>1. Introduction</h3>
               {/* FIX: Escaped double quotes */}
               <p>

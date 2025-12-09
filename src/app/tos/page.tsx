@@ -25,7 +25,7 @@ export default function App() {
             }
             .prose-custom h2, .prose-custom h3 {
               font-weight: 600;
-              color: white;
+              color: var(--color-doc-text);
               margin-top: 1.5em;
               margin-bottom: 0.5em;
             }
@@ -52,7 +52,7 @@ export default function App() {
             }
           `}
         </style>
-        <div className="bg-background text-gray-300 min-h-screen p-8 md:p-12 lg:p-16">
+        <div className="bg-background text-foreground min-h-screen p-8 md:p-12 lg:p-16">
           <div className="max-w-3xl mx-auto">
             <Link
               href="/schedule"
@@ -64,10 +64,12 @@ export default function App() {
               </span>
             </Link>
             <article className="prose prose-invert prose-lg max-w-none prose-custom">
-              <h1 className="text-4xl font-bold text-white mb-4">
+              <h1 className="text-4xl font-bold text-foreground mb-4">
                 Terms of Service
               </h1>
-              <p className="text-gray-400">Effective Date: November 12, 2025</p>
+              <p className="text-muted-foreground">
+                Effective Date: November 12, 2025
+              </p>
 
               <h3>1. Agreement to Terms</h3>
               <p>

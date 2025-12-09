@@ -1,5 +1,6 @@
 import React from "react";
 import { PlazenLogo } from "@/components/plazen-logo";
+import { MoveLeft } from "lucide-react";
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import prisma from "@/lib/prisma";
@@ -20,21 +21,46 @@ const MarkdownStyles = () => (
       .font-lexend {
         font-family: 'Lexend', sans-serif;
       }
-      .prose-custom h2, .prose-custom h3 {
+      /* Make headings responsive and theme-aware */
+      .prose-custom h1 {
+        font-weight: 700;
+        font-size: clamp(28px, 4.8vw, 44px);
+        line-height: 1.08;
+        color: var(--color-release-text) !important;
+        margin-top: 0.25em;
+        margin-bottom: 0.5em;
+      }
+      .prose-custom h2 {
         font-weight: 600;
-        color: white;
-        margin-top: 1.5em;
+        font-size: clamp(22px, 3.2vw, 30px);
+        line-height: 1.12;
+        color: var(--color-release-text) !important;
+        margin-top: 0.9em;
+        margin-bottom: 0.5em;
+      }
+      .prose-custom h3 {
+        font-weight: 600;
+        font-size: clamp(18px, 2.6vw, 20px);
+        line-height: 1.18;
+        color: var(--color-release-text) !important;
+        margin-top: 0.8em;
         margin-bottom: 0.5em;
       }
       .prose-custom p {
         line-height: 1.7;
         margin-bottom: 1em;
+        color: var(--color-release-text);
       }
       .prose-custom ul {
         line-height: 1.7;
         margin-left: 1.5rem;
         margin-bottom: 1em;
         list-style-type: disc;
+      }
+      /* Ensure list markers use theme variable */
+      .prose-custom ul li::marker,
+      .prose-custom ol li::marker {
+        color: var(--color-release-bullet);
       }
       .prose-custom ol {
         line-height: 1.7;
@@ -50,9 +76,52 @@ const MarkdownStyles = () => (
         text-decoration: underline;
         text-decoration-offset: 2px;
       }
-      .prose-custom a:hover {
-        color: var(--color-primary-foreground);
-        background: var(--color-primary);
+      /* High-specificity override for the back-link inside .prose-custom:
+         remove underline, prevent hover background/outline square, and retain accessible focus outline.
+         Use multiple selectors and !important to ensure these rules override other prose presets. */
+      .prose-custom a.back-link,
+      .prose.prose-custom a.back-link,
+      article.prose .prose-custom a.back-link,
+      .prose-custom a.back-link:link,
+      .prose-custom a.back-link:visited,
+      .prose-custom a.back-link:hover,
+      .prose-custom a.back-link:active,
+      .prose-custom a.back-link:focus {
+        color: var(--color-primary) !important;
+        text-decoration: none !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        -webkit-tap-highlight-color: transparent !important;
+        -webkit-user-select: text !important;
+        user-select: text !important;
+      }
+      /* ensure icon pseudo-element remains visible and inherits color */
+      .prose-custom a.back-link::before {
+        display: none;
+      }
+      /* Hover: only change color to darker primary; do NOT add underline, outline or box-shadow */
+      .prose-custom a.back-link:hover {
+        color: var(--color-primary-dark) !important;
+        text-decoration: none !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        outline: none !important;
+      }
+      /* Focus: clear for pointer/mouse interactions; use :focus-visible for keyboard focus ring */
+      .prose-custom a.back-link:focus {
+        /* No visual change on mouse click — prevents the filled rectangle */
+        outline: none !important;
+        box-shadow: none !important;
+        background: transparent !important;
+      }
+      /* Keyboard focus only: show an accessible, rounded ring using the theme variable */
+      .prose-custom a.back-link:focus-visible {
+        color: var(--color-primary-dark) !important;
+        text-decoration: none !important;
+        background: transparent !important;
+        outline: none !important;
+        border-radius: 8px !important;
+        box-shadow: 0 0 0 4px var(--color-primary-dark) !important;
       }
       .prose-custom code {
         background-color: var(--color-input);
@@ -124,7 +193,7 @@ export default async function SingleReleaseNotePage({
   return (
     <div className="font-lexend">
       <MarkdownStyles />
-      <div className="bg-background text-gray-300 min-h-screen p-8 md:p-12 lg:p-16">
+      <div className="bg-background text-foreground min-h-screen p-8 md:p-12 lg:p-16">
         <div className="max-w-3xl mx-auto">
           <Link href="/schedule" className="flex items-center gap-3 mb-8 group">
             <PlazenLogo />
@@ -135,22 +204,28 @@ export default async function SingleReleaseNotePage({
 
           <article className="prose prose-invert prose-lg max-w-none prose-custom">
             <div className="flex justify-between items-center mb-2">
-              <h1 className="text-4xl font-bold text-white !m-0">
+              <h1 className="text-4xl font-bold text-foreground !m-0">
                 {note.topic}
               </h1>
               <span className="text-sm font-medium px-3 py-1 bg-primary/10 text-primary rounded-full flex-shrink-0">
                 {note.version}
               </span>
             </div>
-            <p className="text-gray-400 !m-0">
-              {note.date
-                ? new Date(note.date).toLocaleDateString("en-US", {
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                  })
-                : "No date"}
-            </p>
+            <div className="flex justify-between items-center mb-0">
+              <p className="text-muted-foreground !m-0">
+                {note.date
+                  ? new Date(note.date).toLocaleDateString("en-US", {
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    })
+                  : "No date"}
+              </p>
+              <Link href="/release-notes" className="back-link">
+                <MoveLeft className="h-4 w-4" />
+                Back to Release Notes
+              </Link>
+            </div>
             <hr />
 
             {/* This is where the markdown is rendered */}
