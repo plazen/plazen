@@ -4,13 +4,14 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { encrypt, decrypt } from "@/lib/encryption";
 import { syncCalendarSource, type SyncLogEntry } from "@/lib/calDavService";
+import { syncGoogleSource } from "@/lib/googleService";
 
 export async function GET() {
   const cookieStore = await cookies();
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { cookies: { get: (name: string) => cookieStore.get(name)?.value } }
+    { cookies: { get: (name: string) => cookieStore.get(name)?.value } },
   );
 
   const {
@@ -37,7 +38,7 @@ export async function POST(request: Request) {
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { cookies: { get: (name: string) => cookieStore.get(name)?.value } }
+    { cookies: { get: (name: string) => cookieStore.get(name)?.value } },
   );
 
   const {
@@ -53,7 +54,7 @@ export async function POST(request: Request) {
     const debugLogs: SyncLogEntry[] = [];
 
     const body = await request.json();
-    const { name, url, username, password, color } = body;
+    const { name, url, username, password, color, type } = body;
 
     const newSource = await prisma.calendar_sources.create({
       data: {
@@ -63,14 +64,22 @@ export async function POST(request: Request) {
         username: username ? encrypt(username) : null,
         password: password ? encrypt(password) : null,
         color: color || "#3b82f6",
+        type: type || "caldav",
       },
     });
 
     try {
-      await syncCalendarSource(newSource.id, {
-        expectedUserId: session.user.id,
-        onLog: includeDebug ? (entry) => debugLogs.push(entry) : undefined,
-      });
+      if (newSource.type === "google") {
+        await syncGoogleSource(newSource.id, {
+          expectedUserId: session.user.id,
+          onLog: includeDebug ? (entry) => debugLogs.push(entry) : undefined,
+        });
+      } else {
+        await syncCalendarSource(newSource.id, {
+          expectedUserId: session.user.id,
+          onLog: includeDebug ? (entry) => debugLogs.push(entry) : undefined,
+        });
+      }
     } catch (e) {
       console.error("Initial sync failed", e);
     }
@@ -89,7 +98,7 @@ export async function POST(request: Request) {
     console.error("Failed to add calendar", error);
     return NextResponse.json(
       { error: "Failed to add calendar" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

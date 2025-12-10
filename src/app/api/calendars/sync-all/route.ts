@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { syncCalendarSource } from "@/lib/calDavService";
+import { syncGoogleSource } from "@/lib/googleService";
 import prisma from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -61,11 +62,20 @@ export async function POST(request: Request) {
 
     const results = await Promise.allSettled(
       calendarSources.map(async (source) => {
-        await syncCalendarSource(source.id, {
-          expectedUserId: user.id,
-          rangeStart,
-          rangeEnd,
-        });
+        // Use Google sync for Google-type sources, otherwise fall back to CalDAV
+        if (source.type === "google") {
+          await syncGoogleSource(source.id, {
+            expectedUserId: user.id,
+            rangeStart,
+            rangeEnd,
+          });
+        } else {
+          await syncCalendarSource(source.id, {
+            expectedUserId: user.id,
+            rangeStart,
+            rangeEnd,
+          });
+        }
         return source.id;
       }),
     );

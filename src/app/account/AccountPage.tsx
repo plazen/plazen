@@ -170,6 +170,7 @@ export default function AccountPage() {
     type: "success" | "error";
     text: string;
   } | null>(null);
+  const [connectingCalendar, setConnectingCalendar] = useState(false);
 
   const router = useRouter();
   const supabase = createBrowserClient(
@@ -508,6 +509,32 @@ export default function AccountPage() {
         error instanceof Error ? error.message : "Failed to connect account.";
       setConnectionMessage({ type: "error", text: message });
       setConnectingProvider(null);
+    }
+  };
+
+  const handleLinkGoogleCalendar = async () => {
+    setConnectingCalendar(true);
+    setConnectionMessage(null);
+
+    try {
+      const res = await fetch("/api/google/oauth/start");
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(`Failed to start Google OAuth (${res.status}) ${text}`);
+      }
+
+      const data = await res.json();
+      if (!data || !data.url) {
+        throw new Error("Server did not return an OAuth URL.");
+      }
+
+      // Redirect user to Google's OAuth consent screen
+      window.location.href = data.url;
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to start Google OAuth.";
+      setConnectionMessage({ type: "error", text: message });
+      setConnectingCalendar(false);
     }
   };
 
@@ -1199,6 +1226,34 @@ export default function AccountPage() {
               <p className="text-sm text-muted-foreground mb-4">
                 Connect additional accounts to sign in with different providers
               </p>
+
+              <div className="mb-4 p-3 bg-muted/50 rounded-lg border border-border">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium flex items-center gap-2">
+                      <Calendar className="w-4 h-4" /> Google Calendar
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Link your Google Calendar to import events into Plazen.
+                    </p>
+                  </div>
+                  <div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleLinkGoogleCalendar}
+                      disabled={connectingCalendar}
+                    >
+                      {connectingCalendar ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <FaGoogle className="w-4 h-4 mr-2" />
+                      )}
+                      Link Calendar
+                    </Button>
+                  </div>
+                </div>
+              </div>
 
               {connectionMessage && (
                 <div
