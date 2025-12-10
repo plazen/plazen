@@ -26,8 +26,7 @@ export async function GET(request: Request) {
     );
   }
 
-  const origin =
-    process.env.NEXT_PUBLIC_BASE_URL || new URL(request.url).origin;
+  const origin = new URL(request.url).origin;
   const redirectUri = `${origin.replace(/\/$/, "")}/api/google/oauth/callback`;
 
   const scopes = [
