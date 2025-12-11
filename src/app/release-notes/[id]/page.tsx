@@ -165,13 +165,23 @@ export async function generateMetadata({
     };
   }
 
+  // Compute absolute site base so OG URL works in all environments (dev, preview, prod).
+  const siteBase =
+    process.env.NEXT_PUBLIC_SITE_BASE_URL ??
+    process.env.SITE_BASE_URL ??
+    (process.env.NEXT_PUBLIC_VERCEL_URL
+      ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
+      : undefined) ??
+    "https://plazen.org";
+  const ogUrl = `${siteBase.replace(/\/$/, "")}/api/og?type=release-note&id=${id}`;
+
   return {
     title: `${note.topic} (${note.version})`,
     description: `Release notes for Plazen ${note.version}: ${note.topic}`,
     openGraph: {
       images: [
         {
-          url: `https://plazen.org/api/og?type=release-note&id=${id}`,
+          url: ogUrl,
           width: 1200,
           height: 630,
           alt: `${note.topic} — Plazen ${note.version}`,
@@ -179,7 +189,7 @@ export async function generateMetadata({
       ],
     },
     twitter: {
-      images: [`https://plazen.org/api/og?type=release-note&id=${id}`],
+      images: [ogUrl],
     },
   };
 }
