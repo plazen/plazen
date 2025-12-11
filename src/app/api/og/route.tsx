@@ -164,6 +164,8 @@ export async function GET(req: Request) {
     const imageOptions: any = { width: 1200, height: 630 };
 
     try {
+      const MAX_TOTAL_FONT_BYTES = 300 * 1024;
+
       const gfCss = await fetch(
         "https://fonts.googleapis.com/css2?family=Lexend:wght@400;700&display=swap",
       ).then((r) => r.text());
@@ -180,6 +182,9 @@ export async function GET(req: Request) {
         style?: string;
       }> = [];
 
+      let totalBytes = 0;
+      let sizeExceeded = false;
+
       for (const block of faces) {
         const urlMatch = block.match(urlRegex);
         const weightMatch = block.match(weightRegex);
@@ -189,19 +194,26 @@ export async function GET(req: Request) {
             const fontResp = await fetch(fontUrl);
             if (fontResp.ok) {
               const buf = await fontResp.arrayBuffer();
+              const bufSize = buf.byteLength;
+              if (totalBytes + bufSize > MAX_TOTAL_FONT_BYTES) {
+                sizeExceeded = true;
+                break;
+              }
               fonts.push({
                 name: "Lexend",
                 data: buf,
                 weight: parseInt(weightMatch[1], 10),
                 style: "normal",
               });
+              totalBytes += bufSize;
             }
           } catch (err) {}
         }
       }
 
-      if (fonts.length > 0) {
+      if (fonts.length > 0 && !sizeExceeded) {
         imageOptions.fonts = fonts;
+      } else {
       }
     } catch (err) {}
 
