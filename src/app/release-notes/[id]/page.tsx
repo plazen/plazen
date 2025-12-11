@@ -168,6 +168,19 @@ export async function generateMetadata({
   return {
     title: `${note.topic} (${note.version})`,
     description: `Release notes for Plazen ${note.version}: ${note.topic}`,
+    openGraph: {
+      images: [
+        {
+          url: `https://plazen.org/api/og?type=release-note&id=${id}`,
+          width: 1200,
+          height: 630,
+          alt: `${note.topic} — Plazen ${note.version}`,
+        },
+      ],
+    },
+    twitter: {
+      images: [`https://plazen.org/api/og?type=release-note&id=${id}`],
+    },
   };
 }
 
