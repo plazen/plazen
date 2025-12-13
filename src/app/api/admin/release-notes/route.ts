@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { publishToSocials } from "@/lib/socials";
+import { trySyncReleaseWithNotes } from "@/lib/githubBot";
 
 export const dynamic = "force-dynamic";
 
@@ -94,6 +95,15 @@ export async function POST(request: Request) {
         "Failed to publish to socials, but note was saved:",
         socialError,
       );
+    }
+
+    try {
+      await trySyncReleaseWithNotes(
+        newNote.version || version,
+        `https://plazen.org/release-notes/${newNote.id}`,
+      );
+    } catch (botError) {
+      console.error("Failed to sync GitHub release with notes:", botError);
     }
 
     return NextResponse.json(newNote, { status: 201 });
