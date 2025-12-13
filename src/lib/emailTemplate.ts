@@ -145,7 +145,7 @@ export function toPlainText(content: string): string {
   text = text.replace(/^>\s+/gm, "");
   text = text.replace(/^[\*\-]\s+/gm, "• ");
   text = text.replace(/^\d+\.\s+/gm, "");
-  text = text.replace(/^---$/gm, "---");
+  text = text.replace(/^---$/gm, "");
 
   // Remove HTML tags
   text = text.replace(/<[^>]+>/g, "");

@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { syncCalendarSource, type SyncLogEntry } from "@/lib/calDavService";
+import { syncGoogleSource } from "@/lib/googleService";
 import prisma from "@/lib/prisma";
 
 type RouteParams = Promise<{ id: string }>;
@@ -13,7 +14,7 @@ export async function POST(request: Request, context: { params: RouteParams }) {
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { cookies: { get: (name: string) => cookieStore.get(name)?.value } }
+    { cookies: { get: (name: string) => cookieStore.get(name)?.value } },
   );
 
   const {
@@ -46,7 +47,7 @@ export async function POST(request: Request, context: { params: RouteParams }) {
       });
       return NextResponse.json(
         { error: "Source not found", debug: debugLogs },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -58,14 +59,23 @@ export async function POST(request: Request, context: { params: RouteParams }) {
       });
       return NextResponse.json(
         { error: "Forbidden", debug: debugLogs },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
-    await syncCalendarSource(sourceId, {
-      expectedUserId: user.id,
-      onLog: includeDebug ? (entry) => debugLogs.push(entry) : undefined,
-    });
+    if (source.type === "google") {
+      // Use Google sync for Google-type sources
+      await syncGoogleSource(sourceId, {
+        expectedUserId: user.id,
+        onLog: includeDebug ? (entry) => debugLogs.push(entry) : undefined,
+      });
+    } else {
+      // Fallback to CalDAV sync for other source types (existing behaviour)
+      await syncCalendarSource(sourceId, {
+        expectedUserId: user.id,
+        onLog: includeDebug ? (entry) => debugLogs.push(entry) : undefined,
+      });
+    }
 
     const body: Record<string, unknown> = { status: "ok" };
     if (includeDebug) {
@@ -79,8 +89,8 @@ export async function POST(request: Request, context: { params: RouteParams }) {
       message === "Source not found"
         ? 404
         : message === "Forbidden"
-        ? 403
-        : 500;
+          ? 403
+          : 500;
 
     const body: Record<string, unknown> = { error: message };
     if (includeDebug) {

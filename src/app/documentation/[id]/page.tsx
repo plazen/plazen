@@ -175,11 +175,33 @@ export async function generateMetadata({
     };
   }
 
+  const siteBase =
+    process.env.NEXT_PUBLIC_SITE_BASE_URL ??
+    process.env.SITE_BASE_URL ??
+    (process.env.NEXT_PUBLIC_VERCEL_URL
+      ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
+      : undefined) ??
+    "https://plazen.org";
+  const ogUrl = `${siteBase.replace(/\/$/, "")}/api/og?type=documentation&id=${id}`;
+
   return {
     title: entry.topic || "Documentation",
     description: entry.text
       ? entry.text.slice(0, 160).replace(/[#*`]/g, "") + "..."
       : "Plazen documentation entry.",
+    openGraph: {
+      images: [
+        {
+          url: ogUrl,
+          width: 1200,
+          height: 630,
+          alt: `${entry.topic || "Documentation"} — Plazen`,
+        },
+      ],
+    },
+    twitter: {
+      images: [ogUrl],
+    },
   };
 }
 

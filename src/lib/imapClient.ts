@@ -239,7 +239,6 @@ class IMAPConnection {
       const tlsOptions: tls.ConnectionOptions = {
         socket: this.socket as net.Socket,
         host: this.config.host,
-        rejectUnauthorized: false,
       };
 
       const tlsSocket = tls.connect(tlsOptions, () => {
@@ -264,7 +263,6 @@ class IMAPConnection {
         this.socket = tls.connect(
           {
             ...connectOptions,
-            rejectUnauthorized: false,
           },
           () => {
             this.connected = true;
