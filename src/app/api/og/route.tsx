@@ -75,19 +75,6 @@ export async function GET(req: Request) {
       gap: 12,
     };
 
-    const logoStyle: any = {
-      width: 56,
-      height: 56,
-      borderRadius: 12,
-      background: accent,
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      color: "#ffffff",
-      fontWeight: 700,
-      fontFamily: "Lexend, Inter, Arial",
-      fontSize: 36,
-    };
 
 
 
