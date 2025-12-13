@@ -89,12 +89,7 @@ export async function GET(req: Request) {
       fontSize: 36,
     };
 
-    const siteNameStyle: any = {
-      fontSize: 28,
-      fontWeight: 700,
-      display: "flex",
-      alignItems: "center",
-    };
+
 
     const heroStyle: any = {
       display: "flex",
