@@ -165,14 +165,7 @@ export async function generateMetadata({
     };
   }
 
-  // Compute absolute site base so OG URL works in all environments (dev, preview, prod).
-  const siteBase =
-    process.env.NEXT_PUBLIC_SITE_BASE_URL ??
-    process.env.SITE_BASE_URL ??
-    (process.env.NEXT_PUBLIC_VERCEL_URL
-      ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
-      : undefined) ??
-    "https://plazen.org";
+  const siteBase = "https://plazen.org";
   const ogUrl = `${siteBase.replace(/\/$/, "")}/api/og?type=release-note&id=${id}`;
 
   return {
