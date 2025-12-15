@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "@vercel/og": "^0.6.0",
-    "@paddle/paddle-js": "^1.5.1",
+    "@paddle/paddle-js": "^1.6.1",
     "@paddle/paddle-node-sdk": "^3.4.0",
     "@prisma/adapter-pg": "^7.0.1",
     "@prisma/client": "^7.1.0",
