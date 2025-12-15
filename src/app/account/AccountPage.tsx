@@ -37,9 +37,11 @@ import {
   Key,
   Link as LinkIcon,
   Unlink,
+  AlertTriangle,
 } from "lucide-react";
 import { FaApple, FaDiscord, FaGoogle, FaGithub } from "react-icons/fa";
 import Image from "next/image";
+import Tooltip from "@/app/components/ui/tooltip";
 
 const socialProviders = [
   {
@@ -914,33 +916,7 @@ export default function AccountPage() {
                       <Mail className="w-4 h-4" /> {user.email}
                     </p>
 
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={async () => {
-                          if (!user?.id) return;
-                          try {
-                            await navigator.clipboard.writeText(user.id);
-                            setCopiedId(true);
-                            setTimeout(() => setCopiedId(false), 2000);
-                          } catch (err) {
-                            setCopiedId(false);
-                          }
-                        }}
-                        className="h-7 px-2"
-                      >
-                        {copiedId ? (
-                          <>
-                            <Check className="w-4 h-4 mr-2" /> Copied!
-                          </>
-                        ) : (
-                          <>
-                            <UserIcon className="w-4 h-4 mr-2" /> Copy ID
-                          </>
-                        )}
-                      </Button>
-                    </div>
+                    {/* Copy ID button moved to Member Since area to avoid shrinking avatar on small screens */}
                   </div>
                   <input
                     type="file"
@@ -967,6 +943,34 @@ export default function AccountPage() {
                     year: "numeric",
                   })}
                 </p>
+
+                <div className="mt-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      if (!user?.id) return;
+                      try {
+                        await navigator.clipboard.writeText(user.id);
+                        setCopiedId(true);
+                        setTimeout(() => setCopiedId(false), 2000);
+                      } catch (err) {
+                        setCopiedId(false);
+                      }
+                    }}
+                    className="h-7 px-2"
+                  >
+                    {copiedId ? (
+                      <>
+                        <Check className="w-4 h-4 mr-2" /> Copied!
+                      </>
+                    ) : (
+                      <>
+                        <UserIcon className="w-4 h-4 mr-2" /> Copy ID
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
@@ -1238,19 +1242,19 @@ export default function AccountPage() {
                     </p>
                   </div>
                   <div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleLinkGoogleCalendar}
-                      disabled={connectingCalendar}
+                    <Tooltip
+                      content="This feature is coming soon — we need approval from Google"
+                      side="top"
                     >
-                      {connectingCalendar ? (
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      ) : (
-                        <FaGoogle className="w-4 h-4 mr-2" />
-                      )}
-                      Link Calendar
-                    </Button>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        aria-disabled={true}
+                        className="cursor-not-allowed"
+                      >
+                        <AlertTriangle className="w-4 h-4 text-yellow-500" />
+                      </Button>
+                    </Tooltip>
                   </div>
                 </div>
               </div>
