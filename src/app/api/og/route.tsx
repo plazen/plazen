@@ -17,7 +17,9 @@ export async function GET(req: Request) {
       type === "release-note"
         ? `/api/release-notes/${encodeURIComponent(id)}`
         : `/api/documentation/${encodeURIComponent(id)}`;
-    const apiUrl = new URL(apiPath, url.origin).toString();
+
+    const apiOrigin = "https://plazen.org";
+    const apiUrl = new URL(apiPath, apiOrigin).toString();
 
     const res = await fetch(apiUrl);
     if (!res.ok) {

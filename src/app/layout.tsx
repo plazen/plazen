@@ -40,12 +40,7 @@ const instrumentSans = Instrument_Sans({
 
 const appVersion = packageJson.version;
 
-const SITE_BASE =
-  process.env.NEXT_PUBLIC_SITE_BASE_URL ??
-  (process.env.NEXT_PUBLIC_VERCEL_URL
-    ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
-    : undefined) ??
-  "https://plazen.org";
+const SITE_BASE = "https://plazen.org";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_BASE),
