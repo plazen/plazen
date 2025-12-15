@@ -55,7 +55,7 @@ export function Tooltip({
 
   const trigger = React.cloneElement(children, {
     "aria-describedby": id,
-  });
+  } as any);
 
   return (
     <span className="relative inline-block group">
