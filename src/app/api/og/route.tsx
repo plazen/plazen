@@ -17,7 +17,7 @@ export async function GET(req: Request) {
       type === "release-note"
         ? `/api/release-notes/${encodeURIComponent(id)}`
         : `/api/documentation/${encodeURIComponent(id)}`;
-    const apiUrl = `${url.origin}${apiPath}`;
+    const apiUrl = apiPath; // Use a relative URL to prevent SSRF
 
     const res = await fetch(apiUrl);
     if (!res.ok) {
