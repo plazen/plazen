@@ -44,7 +44,6 @@ export async function GET(req: Request) {
     const bg = isLight ? "#ffffff" : "#0b1220";
     const fg = isLight ? "#0b1220" : "#e6f0fb";
     const muted = isLight ? "#6b7280" : "#9fb6d8";
-    const accent = "#06b6d4";
     const bgGradient = isLight
       ? "linear-gradient(118deg,rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 1) 50%, rgba(87, 199, 133, 1) 100%);"
       : "linear-gradient(118deg,rgba(0, 0, 0, 1) 0%, rgba(12, 28, 19, 1) 50%, rgba(20, 46, 31, 1) 55%, rgba(70, 161, 107, 1) 81%, rgba(87, 199, 133, 1) 100%)";
@@ -74,9 +73,6 @@ export async function GET(req: Request) {
       alignItems: "center",
       gap: 12,
     };
-
-
-
 
     const heroStyle: any = {
       display: "flex",
