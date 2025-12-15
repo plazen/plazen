@@ -248,15 +248,14 @@ export async function syncGoogleSource(
         }
 
         // If we refreshed above, ensure headers use new token
-        const effectiveHeaders = accessToken
-          ? {
-              Authorization: `Bearer ${accessToken}`,
-              Accept: "application/json",
-            }
-          : headers;
-        const effectiveEventsRes = accessToken
-          ? await fetch(eventsUrl, { headers: effectiveHeaders })
-          : await fetch(eventsUrl, { headers });
+        const effectiveHeaders = {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: "application/json",
+        };
+
+        const effectiveEventsRes = await fetch(eventsUrl, {
+          headers: effectiveHeaders,
+        });
 
         if (!effectiveEventsRes.ok) {
           const text = await effectiveEventsRes.text();
