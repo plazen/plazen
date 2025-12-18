@@ -389,6 +389,14 @@ export async function syncGoogleSource(
           },
         };
 
+        // If we have an effective date range, only delete stale events within that range
+        if (effectiveRangeStart && effectiveRangeEnd) {
+          deleteWhere.start_time = {
+            gte: effectiveRangeStart,
+            lt: effectiveRangeEnd,
+          };
+        }
+
         const deleteResult = await prisma.external_events.deleteMany({
           where: deleteWhere,
         });
