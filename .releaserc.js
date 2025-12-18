@@ -35,30 +35,19 @@ module.exports = {
             commitsSort: ["scope", "subject"],
             transform: (commit, context) => {
               const type = commit.type || "other";
-              const newCommit = Object.assign({}, commit);
+              const newCommit = Object.assign({}, commit); // Shallow copy
 
-              if (newCommit.committerDate) {
-                newCommit.committerDate = new Date(
-                  newCommit.committerDate,
-                ).toISOString();
-              }
+              delete newCommit.committerDate;
 
               if (newCommit.author) {
+                // Break reference to the original immutable author object
                 newCommit.author = Object.assign({}, newCommit.author);
-                if (newCommit.author.date) {
-                  newCommit.author.date = new Date(
-                    newCommit.author.date,
-                  ).toISOString();
-                }
+                delete newCommit.author.date;
               }
-
               if (newCommit.committer) {
+                // Break reference to the original immutable committer object
                 newCommit.committer = Object.assign({}, newCommit.committer);
-                if (newCommit.committer.date) {
-                  newCommit.committer.date = new Date(
-                    newCommit.committer.date,
-                  ).toISOString();
-                }
+                delete newCommit.committer.date;
               }
 
               newCommit.emoji = emojiForType[type] || "🔹";
