@@ -28,7 +28,7 @@ export async function GET(request: Request) {
 
   const origin = new URL(request.url).origin;
   const redirectUri = `${origin.replace(/\/$/, "")}/api/google/oauth/callback`;
-
+  // const redirectUri = `https://plazen.org/api/google/oauth/callback`;
   const scopes = [
     "https://www.googleapis.com/auth/calendar.readonly",
     "openid",
