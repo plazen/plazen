@@ -192,6 +192,14 @@ export async function syncGoogleSource(
       calendars: calendars.map((c) => c.id),
     });
 
+    // Calculate effective time range for sync
+    // If specific range provided (e.g. from viewing a specific day), use it.
+    // Otherwise, default to a reasonable window (e.g. +/- 1 day) to avoid fetching entire history.
+    const now = Date.now();
+    const oneDayMs = 24 * 60 * 60 * 1000;
+    const effectiveRangeStart = options?.rangeStart ?? new Date(now - oneDayMs);
+    const effectiveRangeEnd = options?.rangeEnd ?? new Date(now + oneDayMs);
+
     const allSyncedUids = new Set<string>();
     let syncedCount = 0;
 
@@ -374,6 +382,11 @@ export async function syncGoogleSource(
         const deleteWhere: any = {
           source_id: source.id,
           uid: { notIn: Array.from(allSyncedUids) },
+          // Only delete stale events within the range we actually synced
+          start_time: {
+            gte: effectiveRangeStart,
+            lt: effectiveRangeEnd,
+          },
         };
 
         // If we have an effective date range, only delete stale events within that range
@@ -390,8 +403,8 @@ export async function syncGoogleSource(
         if (deleteResult.count > 0) {
           log("info", `Deleted ${deleteResult.count} stale events`, {
             sourceId: source.id,
-            rangeStart: options?.rangeStart?.toISOString(),
-            rangeEnd: options?.rangeEnd?.toISOString(),
+            rangeStart: effectiveRangeStart.toISOString(),
+            rangeEnd: effectiveRangeEnd.toISOString(),
           });
         }
       }
