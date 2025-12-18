@@ -36,7 +36,7 @@ export async function POST(request: Request) {
         rangeEnd = new Date(parsedDate);
         rangeStart.setUTCHours(0, 0, 0, 0);
         rangeEnd.setUTCHours(0, 0, 0, 0);
-        rangeEnd.setUTCDate(rangeEnd.getUTCDate() + 1);
+        rangeEnd.setUTCDate(rangeEnd.getUTCDate() + 7);
 
         if (rangeEnd.getUTCFullYear() >= 10000) {
           rangeEnd = new Date("9999-12-31T23:59:59.999Z");

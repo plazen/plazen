@@ -94,6 +94,29 @@ export async function syncCalendarSource(
     }
   };
 
+  // Default to loading events for the upcoming week when no explicit range is provided.
+  const now = new Date();
+  const defaultStart = new Date(now);
+  // Start at top of current day for a sensible range
+  defaultStart.setHours(0, 0, 0, 0);
+  const defaultEnd = new Date(defaultStart);
+  defaultEnd.setDate(defaultEnd.getDate() + 7); // one week ahead
+
+  const effectiveRangeStart: Date | undefined =
+    options?.rangeStart ?? defaultStart;
+  const effectiveRangeEnd: Date | undefined = options?.rangeEnd ?? defaultEnd;
+
+  if (!options?.rangeStart || !options?.rangeEnd) {
+    log(
+      "info",
+      "No explicit range provided, defaulting to background fetch for next 7 days",
+      {
+        rangeStart: effectiveRangeStart.toISOString(),
+        rangeEnd: effectiveRangeEnd.toISOString(),
+      },
+    );
+  }
+
   try {
     const client = await createClientWithFallback(source.url, auth, log);
 
@@ -134,8 +157,8 @@ export async function syncCalendarSource(
           client,
           calendar.url,
           log,
-          options?.rangeStart,
-          options?.rangeEnd,
+          effectiveRangeStart,
+          effectiveRangeEnd,
         );
         log("info", `Retrieved ${events.length} events`, {
           url: calendar.url,
@@ -260,10 +283,10 @@ export async function syncCalendarSource(
         };
 
         // If we synced with a date range, only delete stale events within that range
-        if (options?.rangeStart && options?.rangeEnd) {
+        if (effectiveRangeStart && effectiveRangeEnd) {
           deleteWhere.start_time = {
-            gte: options.rangeStart,
-            lt: options.rangeEnd,
+            gte: effectiveRangeStart,
+            lt: effectiveRangeEnd,
           };
         }
 

@@ -153,6 +153,19 @@ export async function syncGoogleSource(
     Accept: "application/json",
   };
 
+  // Determine effective fetch range: default to upcoming week when not explicitly provided.
+  // This will be used for event queries and for limiting stale-event deletion.
+  const now = new Date();
+  const defaultStart = new Date(now);
+  // Start at top of current day for a sensible range
+  defaultStart.setHours(0, 0, 0, 0);
+  const defaultEnd = new Date(defaultStart);
+  defaultEnd.setDate(defaultEnd.getDate() + 7); // one week ahead
+
+  const effectiveRangeStart: Date | undefined =
+    options?.rangeStart ?? defaultStart;
+  const effectiveRangeEnd: Date | undefined = options?.rangeEnd ?? defaultEnd;
+
   try {
     // List calendars on the account
     const calListUrl =
@@ -193,10 +206,10 @@ export async function syncGoogleSource(
         params.set("singleEvents", "true"); // expand recurring events
         params.set("maxResults", "2500"); // reasonable upper bound
 
-        if (options?.rangeStart)
-          params.set("timeMin", options.rangeStart.toISOString());
-        if (options?.rangeEnd)
-          params.set("timeMax", options.rangeEnd.toISOString());
+        if (effectiveRangeStart)
+          params.set("timeMin", effectiveRangeStart.toISOString());
+        if (effectiveRangeEnd)
+          params.set("timeMax", effectiveRangeEnd.toISOString());
 
         const eventsUrl = `https://www.googleapis.com/calendar/v3/calendars/${encodedCalendarId}/events?${params.toString()}`;
 
@@ -363,11 +376,11 @@ export async function syncGoogleSource(
           uid: { notIn: Array.from(allSyncedUids) },
         };
 
-        // If we had a date range, only delete stale events within that range
-        if (options?.rangeStart && options?.rangeEnd) {
+        // If we have an effective date range, only delete stale events within that range
+        if (effectiveRangeStart && effectiveRangeEnd) {
           deleteWhere.start_time = {
-            gte: options.rangeStart,
-            lt: options.rangeEnd,
+            gte: effectiveRangeStart,
+            lt: effectiveRangeEnd,
           };
         }
 
