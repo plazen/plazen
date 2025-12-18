@@ -37,6 +37,30 @@ module.exports = {
               const type = commit.type || "other";
               const newCommit = Object.assign({}, commit);
 
+              if (newCommit.committerDate) {
+                newCommit.committerDate = new Date(
+                  newCommit.committerDate,
+                ).toISOString();
+              }
+
+              if (newCommit.author) {
+                newCommit.author = Object.assign({}, newCommit.author);
+                if (newCommit.author.date) {
+                  newCommit.author.date = new Date(
+                    newCommit.author.date,
+                  ).toISOString();
+                }
+              }
+
+              if (newCommit.committer) {
+                newCommit.committer = Object.assign({}, newCommit.committer);
+                if (newCommit.committer.date) {
+                  newCommit.committer.date = new Date(
+                    newCommit.committer.date,
+                  ).toISOString();
+                }
+              }
+
               newCommit.emoji = emojiForType[type] || "🔹";
 
               if (!newCommit.originalType) {
@@ -50,6 +74,7 @@ module.exports = {
                   context.owner ||
                   (context.repository ? context.repository.split("/")[0] : "");
                 const repo = context.repository || context.packageName || "";
+
                 newCommit.subject = newCommit.subject.replace(
                   /(?:\s|^)(#)(\d+)\b/g,
                   (_, p1, id) => {
