@@ -174,6 +174,12 @@ export default function AccountPage() {
   } | null>(null);
   const [connectingCalendar, setConnectingCalendar] = useState(false);
 
+  // Calendar sources state
+  const [calendarSources, setCalendarSources] = useState<
+    { id: string; type: string; name?: string; url?: string }[]
+  >([]);
+  const [calendarLoading, setCalendarLoading] = useState(false);
+
   const router = useRouter();
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -207,6 +213,26 @@ export default function AccountPage() {
         path,
       });
       return null;
+    }
+  }, []);
+
+  const fetchCalendarSources = useCallback(async () => {
+    setCalendarLoading(true);
+    try {
+      const res = await fetch("/api/calendars");
+      if (!res.ok) {
+        // treat as no sources, but log
+        console.error("Failed to fetch calendar sources", res.status);
+        setCalendarSources([]);
+      } else {
+        const data = await res.json();
+        setCalendarSources(Array.isArray(data) ? data : []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch calendar sources:", err);
+      setCalendarSources([]);
+    } finally {
+      setCalendarLoading(false);
     }
   }, []);
 
@@ -291,7 +317,12 @@ export default function AccountPage() {
           }
         }
 
-        await Promise.all([fetchSettings(), fetchStats(), fetchSubscription()]);
+        await Promise.all([
+          fetchSettings(),
+          fetchStats(),
+          fetchSubscription(),
+          fetchCalendarSources(),
+        ]);
       } else {
         router.push("/login");
       }
@@ -300,7 +331,47 @@ export default function AccountPage() {
 
     loadAccountData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fetchAvatarSignedUrl, router, supabase.auth]);
+  }, [fetchAvatarSignedUrl, router, supabase.auth, fetchCalendarSources]);
+
+  // Read URL query params to detect OAuth status from callback and show user-friendly messages.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const url = new URL(window.location.href);
+    const params = url.searchParams;
+    const linked = params.get("google_linked");
+    const linkError = params.get("google_link_error");
+
+    if (linked) {
+      setConnectionMessage({
+        type: "success",
+        text: "Google Calendar linked successfully. Initial sync has been started.",
+      });
+      // refresh calendar sources to reflect the new linked calendar
+      fetchCalendarSources().catch(() => {});
+    } else if (linkError) {
+      const readable = decodeURIComponent(linkError);
+      setConnectionMessage({
+        type: "error",
+        text: `Failed to link Google Calendar: ${readable}`,
+      });
+    }
+
+    // Remove handled params from URL so message doesn't reappear on refresh.
+    if (linked || linkError) {
+      params.delete("google_linked");
+      params.delete("google_link_error");
+      const newSearch = params.toString();
+      const newUrl = `${url.pathname}${newSearch ? `?${newSearch}` : ""}${
+        url.hash || ""
+      }`;
+      window.history.replaceState({}, "", newUrl);
+      // ensure connectingCalendar resets if it was set (we're now on account page)
+      setConnectingCalendar(false);
+    }
+    // intentionally not listing fetchCalendarSources in deps to avoid loops
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const fetchSubscription = async () => {
     try {
@@ -537,6 +608,31 @@ export default function AccountPage() {
         err instanceof Error ? err.message : "Failed to start Google OAuth.";
       setConnectionMessage({ type: "error", text: message });
       setConnectingCalendar(false);
+    }
+  };
+
+  const handleUnlinkCalendar = async (id: string) => {
+    if (!id) return;
+    setConnectionMessage(null);
+    try {
+      const res = await fetch(`/api/calendars/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        const txt = await res.text().catch(() => "");
+        throw new Error(
+          `Failed to remove calendar (${res.status}) ${txt || ""}`.trim(),
+        );
+      }
+      setConnectionMessage({
+        type: "success",
+        text: "Calendar connection removed.",
+      });
+      await fetchCalendarSources();
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to unlink calendar.";
+      setConnectionMessage({ type: "error", text: message });
     }
   };
 
@@ -806,6 +902,9 @@ export default function AccountPage() {
   const completionRate =
     stats.totalTasks > 0 ? (stats.completedTasks / stats.totalTasks) * 100 : 0;
 
+  const googleSource = calendarSources.find((s) => s.type === "google");
+  const isGoogleLinked = !!googleSource;
+
   return (
     <div className="min-h-screen bg-background text-foreground font-lexend">
       <header className="border-b border-border backdrop-blur-sm bg-background/95 sticky top-0 z-40">
@@ -847,7 +946,10 @@ export default function AccountPage() {
                       className="rounded-full object-cover"
                     />
                   ) : (
-                    <div className="w-16 h-16 bg-gradient-to-br from-primary to-primary/60 rounded-full flex items-center justify-center">
+                    <div
+                      className="w-16
+ h-16 bg-gradient-to-br from-primary to-primary/60 rounded-full flex items-center justify-center"
+                    >
                       <UserIcon className="w-8 h-8 text-white" />
                     </div>
                   )}
@@ -1240,21 +1342,50 @@ export default function AccountPage() {
                     <p className="text-xs text-muted-foreground">
                       Link your Google Calendar to import events into Plazen.
                     </p>
+                    {calendarLoading ? (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Checking calendar connection...
+                      </p>
+                    ) : isGoogleLinked ? (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Linked: {googleSource?.name ?? "Google Calendar"}
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Not linked
+                      </p>
+                    )}
                   </div>
                   <div>
-                    <Tooltip
-                      content="This feature is coming soon — we need approval from Google"
-                      side="top"
-                    >
+                    {isGoogleLinked ? (
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleUnlinkCalendar(googleSource!.id)}
+                        >
+                          <Unlink className="w-4 h-4 mr-2" /> Unlink
+                        </Button>
+                      </div>
+                    ) : (
                       <Button
-                        variant="outline"
-                        size="icon"
-                        aria-disabled={true}
-                        className="cursor-not-allowed"
+                        variant="default"
+                        size="sm"
+                        onClick={handleLinkGoogleCalendar}
+                        disabled={connectingCalendar}
                       >
-                        <AlertTriangle className="w-4 h-4 text-yellow-500" />
+                        {connectingCalendar ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />{" "}
+                            Connecting...
+                          </>
+                        ) : (
+                          <>
+                            <FaGoogle className="w-4 h-4 mr-2" /> Link Calendar
+                          </>
+                        )}
                       </Button>
-                    </Tooltip>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1502,14 +1633,15 @@ function Switch({
   return (
     <button
       onClick={() => onCheckedChange(!checked)}
-      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
-        checked ? "bg-primary" : "bg-muted"
+      aria-pressed={checked}
+      className={`w-12 h-7 rounded-full p-1 transition-colors ${
+        checked ? "bg-primary/80" : "bg-muted/60"
       }`}
     >
       <span
-        className={`${
-          checked ? "translate-x-6" : "translate-x-1"
-        } inline-block h-4 w-4 transform rounded-full bg-white transition-transform`}
+        className={`block w-5 h-5 bg-white rounded-full shadow transform transition-transform ${
+          checked ? "translate-x-5" : "translate-x-0"
+        }`}
       />
     </button>
   );
