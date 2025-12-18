@@ -32,19 +32,20 @@ export async function POST(request: Request) {
     if (body.date) {
       const parsedDate = new Date(body.date);
       if (!Number.isNaN(parsedDate.getTime())) {
+        // Start with UTC midnight for the requested date
         rangeStart = new Date(parsedDate);
-        rangeEnd = new Date(parsedDate);
         rangeStart.setUTCHours(0, 0, 0, 0);
         rangeEnd.setUTCHours(0, 0, 0, 0);
         rangeEnd.setUTCDate(rangeEnd.getUTCDate() + 7);
 
+        // Cap valid range to avoid year 10000+ overflow
         if (rangeEnd.getUTCFullYear() >= 10000) {
           rangeEnd = new Date("9999-12-31T23:59:59.999Z");
         }
       }
     }
   } catch {
-    // No body or invalid JSON - sync without date range
+    // No body or invalid JSON - sync without date range (will use default logic)
   }
 
   try {
@@ -88,6 +89,8 @@ export async function POST(request: Request) {
       total: calendarSources.length,
       succeeded,
       failed,
+      rangeStart: rangeStart?.toISOString(),
+      rangeEnd: rangeEnd?.toISOString(),
     });
 
     return NextResponse.json({

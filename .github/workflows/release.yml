@@ -51,3 +51,18 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: 🔁 Trigger Vercel deployment
+        if: ${{ success() }}
+        env:
+          VERCEL_DEPLOY_HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK }}
+        run: |
+          if [ -n "$VERCEL_DEPLOY_HOOK" ]; then
+            echo "Triggering Vercel deployment hook..."
+            # POST to the Vercel deployment hook URL stored in the repository secrets.
+            # The hook URL is expected to be set in the secret `VERCEL_DEPLOY_HOOK`.
+            curl -sSf -X POST "$VERCEL_DEPLOY_HOOK"
+            echo "Vercel deployment hook triggered."
+          else
+            echo "Skipping Vercel deployment: secret VERCEL_DEPLOY_HOOK not set."
+          fi

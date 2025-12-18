@@ -121,12 +121,13 @@ export default function TimetableApp() {
         }
         setTasksLoading(false);
 
-        // Trigger background CalDAV sync after displaying cached data
+        // Trigger background CalDAV/Google sync after displaying cached data
         if (!skipSync) {
           fetch("/api/calendars/sync-all", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ date: dateString }),
+            // Pass timezoneOffset so the server knows the exact local 24h window
+            body: JSON.stringify({ date: dateString, timezoneOffset }),
           })
             .then((syncResponse) => {
               if (syncResponse.ok) {
@@ -159,7 +160,7 @@ export default function TimetableApp() {
               }
             })
             .catch((err) => {
-              console.error("Failed to sync CalDAV calendars:", err);
+              console.error("Failed to sync calendars:", err);
             });
         }
       } catch (err: unknown) {
