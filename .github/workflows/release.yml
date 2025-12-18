@@ -4,9 +4,7 @@
 name: Release
 
 on:
-  push:
-    branches:
-      - main # Only run releases from the main branch
+  workflow_dispatch:
 
 permissions:
   contents: write # To create releases, tags, and commit version bumps
