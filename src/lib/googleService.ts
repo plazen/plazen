@@ -179,6 +179,14 @@ export async function syncGoogleSource(
       calendars: calendars.map((c) => c.id),
     });
 
+    // Calculate effective time range for sync
+    // If specific range provided (e.g. from viewing a specific day), use it.
+    // Otherwise, default to a reasonable window (e.g. +/- 1 day) to avoid fetching entire history.
+    const now = Date.now();
+    const oneDayMs = 24 * 60 * 60 * 1000;
+    const effectiveRangeStart = options?.rangeStart ?? new Date(now - oneDayMs);
+    const effectiveRangeEnd = options?.rangeEnd ?? new Date(now + oneDayMs);
+
     const allSyncedUids = new Set<string>();
     let syncedCount = 0;
 
@@ -192,11 +200,8 @@ export async function syncGoogleSource(
         const params = new URLSearchParams();
         params.set("singleEvents", "true"); // expand recurring events
         params.set("maxResults", "2500"); // reasonable upper bound
-
-        if (options?.rangeStart)
-          params.set("timeMin", options.rangeStart.toISOString());
-        if (options?.rangeEnd)
-          params.set("timeMax", options.rangeEnd.toISOString());
+        params.set("timeMin", effectiveRangeStart.toISOString());
+        params.set("timeMax", effectiveRangeEnd.toISOString());
 
         const eventsUrl = `https://www.googleapis.com/calendar/v3/calendars/${encodedCalendarId}/events?${params.toString()}`;
 
@@ -361,15 +366,12 @@ export async function syncGoogleSource(
         const deleteWhere: any = {
           source_id: source.id,
           uid: { notIn: Array.from(allSyncedUids) },
+          // Only delete stale events within the range we actually synced
+          start_time: {
+            gte: effectiveRangeStart,
+            lt: effectiveRangeEnd,
+          },
         };
-
-        // If we had a date range, only delete stale events within that range
-        if (options?.rangeStart && options?.rangeEnd) {
-          deleteWhere.start_time = {
-            gte: options.rangeStart,
-            lt: options.rangeEnd,
-          };
-        }
 
         const deleteResult = await prisma.external_events.deleteMany({
           where: deleteWhere,
@@ -377,8 +379,8 @@ export async function syncGoogleSource(
         if (deleteResult.count > 0) {
           log("info", `Deleted ${deleteResult.count} stale events`, {
             sourceId: source.id,
-            rangeStart: options?.rangeStart?.toISOString(),
-            rangeEnd: options?.rangeEnd?.toISOString(),
+            rangeStart: effectiveRangeStart.toISOString(),
+            rangeEnd: effectiveRangeEnd.toISOString(),
           });
         }
       }
