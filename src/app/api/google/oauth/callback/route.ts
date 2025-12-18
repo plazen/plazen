@@ -28,8 +28,7 @@ export async function GET(request: Request) {
     { cookies: { get: (name: string) => cookieStore.get(name)?.value } },
   );
 
-  const origin =
-    process.env.NEXT_PUBLIC_BASE_URL || new URL(request.url).origin;
+  const origin = new URL(request.url).origin;
 
   try {
     const url = new URL(request.url);

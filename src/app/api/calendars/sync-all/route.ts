@@ -32,19 +32,30 @@ export async function POST(request: Request) {
     if (body.date) {
       const parsedDate = new Date(body.date);
       if (!Number.isNaN(parsedDate.getTime())) {
+        // Start with UTC midnight for the requested date
         rangeStart = new Date(parsedDate);
-        rangeEnd = new Date(parsedDate);
         rangeStart.setUTCHours(0, 0, 0, 0);
-        rangeEnd.setUTCHours(0, 0, 0, 0);
+
+        // Apply timezone offset if provided
+        // getTimezoneOffset() returns minutes (UTC - Local)
+        // e.g., For UTC+4, offset is -240.
+        // UTC 00:00 + (-240m) = Previous Day 20:00 UTC (which is 00:00 Local)
+        if (typeof body.timezoneOffset === "number") {
+          rangeStart.setMinutes(rangeStart.getMinutes() + body.timezoneOffset);
+        }
+
+        // Set rangeEnd to exactly 24 hours after rangeStart
+        rangeEnd = new Date(rangeStart);
         rangeEnd.setUTCDate(rangeEnd.getUTCDate() + 1);
 
+        // Cap valid range to avoid year 10000+ overflow
         if (rangeEnd.getUTCFullYear() >= 10000) {
           rangeEnd = new Date("9999-12-31T23:59:59.999Z");
         }
       }
     }
   } catch {
-    // No body or invalid JSON - sync without date range
+    // No body or invalid JSON - sync without date range (will use default logic)
   }
 
   try {
@@ -88,6 +99,8 @@ export async function POST(request: Request) {
       total: calendarSources.length,
       succeeded,
       failed,
+      rangeStart: rangeStart?.toISOString(),
+      rangeEnd: rangeEnd?.toISOString(),
     });
 
     return NextResponse.json({
