@@ -18,6 +18,8 @@ jobs:
     timeout-minutes: 30
     env:
       DATABASE_URL: "postgresql://dummy:dummy@localhost:5432/dummy_db"
+      NEXT_PUBLIC_SUPABASE_URL: "https://example.supabase.co"
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.dummy-key"
     steps:
       - name: 📥 Checkout code
         uses: actions/checkout@v4
