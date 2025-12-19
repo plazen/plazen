@@ -32,11 +32,13 @@ export async function POST(request: Request) {
     if (body.date) {
       const parsedDate = new Date(body.date);
       if (!Number.isNaN(parsedDate.getTime())) {
-        // Start with UTC midnight for the requested date
-        rangeStart = new Date(parsedDate);
-        rangeStart.setUTCHours(0, 0, 0, 0);
-        rangeEnd.setUTCHours(0, 0, 0, 0);
-        rangeEnd.setUTCDate(rangeEnd.getUTCDate() + 7);
+        const start = new Date(parsedDate);
+        const end = new Date(parsedDate);
+        start.setUTCHours(0, 0, 0, 0);
+        end.setUTCHours(0, 0, 0, 0);
+        end.setUTCDate(end.getUTCDate() + 1);
+        rangeStart = start;
+        rangeEnd = end;
 
         // Cap valid range to avoid year 10000+ overflow
         if (rangeEnd.getUTCFullYear() >= 10000) {
