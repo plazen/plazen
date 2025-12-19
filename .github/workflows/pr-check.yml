@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DATABASE_URL: "postgresql://dummy:dummy@localhost:5432/dummy_db"
     steps:
       - name: 📥 Checkout code
         uses: actions/checkout@v4
