@@ -194,8 +194,17 @@ class IMAPConnection {
     });
   }
 
-  private handleData(data: Buffer): void {
-    this.responseBuffer += data.toString();
+  private handleData(data: Buffer | string | Uint8Array): void {
+    let chunk: string;
+    if (typeof data === "string") {
+      chunk = data;
+    } else if (Buffer.isBuffer(data)) {
+      chunk = data.toString();
+    } else {
+      chunk = Buffer.from(data).toString();
+    }
+
+    this.responseBuffer += chunk;
     if (this.responseResolver) {
       // Call resolver without passing the buffer; resolver will inspect
       // `this.responseBuffer` and may return true if it handled a tagged response.
