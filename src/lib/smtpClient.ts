@@ -73,8 +73,18 @@ class SMTPConnection {
     });
   }
 
-  private handleData(data: Buffer): void {
-    this.responseBuffer += data.toString();
+  private handleData(data: Buffer | string | Uint8Array): void {
+    let chunk: string;
+    if (typeof data === "string") {
+      chunk = data;
+    } else if (Buffer.isBuffer(data)) {
+      chunk = data.toString();
+    } else {
+      // Handle Uint8Array / ArrayBufferView variants
+      chunk = Buffer.from(data).toString();
+    }
+
+    this.responseBuffer += chunk;
 
     // SMTP responses end with \r\n and multi-line responses have a hyphen after the code
     const lines = this.responseBuffer.split("\r\n");
