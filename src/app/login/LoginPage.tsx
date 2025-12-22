@@ -30,36 +30,6 @@ const socialProviders = [
     bgColor: "bg-indigo-600 hover:bg-indigo-700",
     name: "Discord",
   },
-  // {
-  //   id: "twitter",
-  //   icon: Twitter,
-  //   bgColor: "bg-blue-500 hover:bg-blue-600",
-  //   name: "Twitter",
-  // },
-  // {
-  //   id: "facebook",
-  //   icon: Facebook,
-  //   bgColor: "bg-blue-600 hover:bg-blue-700",
-  //   name: "Facebook",
-  // },
-  // {
-  //   id: "linkedin_oidc",
-  //   icon: Linkedin,
-  //   bgColor: "bg-blue-700 hover:bg-blue-800",
-  //   name: "LinkedIn",
-  // },
-  // {
-  //   id: "azure",
-  //   icon: Mail,
-  //   bgColor: "bg-blue-500 hover:bg-blue-600",
-  //   name: "Microsoft",
-  // },
-  {
-    id: "apple",
-    icon: FaApple,
-    bgColor: "bg-black hover:bg-gray-900",
-    name: "Apple",
-  },
 ];
 
 export default function LoginPage() {
@@ -107,11 +77,6 @@ export default function LoginPage() {
           | "github"
           | "google"
           | "discord"
-          // | "twitter"
-          // | "facebook"
-          // | "linkedin_oidc"
-          // | "azure"
-          | "apple",
       });
       if (error) throw error;
     } catch (error) {
