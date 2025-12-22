@@ -5,14 +5,14 @@ import prisma from "@/lib/prisma";
 
 export async function GET(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
   const cookieStore = await cookies();
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { cookies: { get: (name: string) => cookieStore.get(name)?.value } }
+    { cookies: { get: (name: string) => cookieStore.get(name)?.value } },
   );
 
   const {
@@ -31,10 +31,12 @@ export async function GET(
     include: {
       messages: {
         orderBy: { created_at: "asc" },
-        include: { user: { select: { email: true, id: true } } },
+        include: {
+          user: { select: { email: true, id: true, raw_user_meta_data: true } },
+        },
       },
       labels: { include: { label: true } },
-      users: { select: { email: true } },
+      users: { select: { email: true, id: true, raw_user_meta_data: true } },
     },
   });
 
@@ -46,12 +48,32 @@ export async function GET(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  return NextResponse.json(ticket);
+  // Map display_name and avatar_path for users and message authors
+  const mapUser = (user) => {
+    const meta = user.raw_user_meta_data || {};
+    return {
+      id: user.id,
+      email: user.email,
+      display_name: meta.display_name || (user.email?.split("@")[0] ?? ""),
+      avatar_path: meta.avatar_path || null,
+    };
+  };
+
+  const ticketWithNames = {
+    ...ticket,
+    users: mapUser(ticket.users),
+    messages: ticket.messages.map((msg) => ({
+      ...msg,
+      user: mapUser(msg.user),
+    })),
+  };
+
+  return NextResponse.json(ticketWithNames);
 }
 
 export async function POST(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   // Add a new message to the ticket
   const { id } = await params;
@@ -59,7 +81,7 @@ export async function POST(
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { cookies: { get: (name: string) => cookieStore.get(name)?.value } }
+    { cookies: { get: (name: string) => cookieStore.get(name)?.value } },
   );
 
   const {
