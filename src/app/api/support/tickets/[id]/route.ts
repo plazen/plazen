@@ -98,7 +98,7 @@ export async function GET(
   }
 
   // Map display_name and avatar_path for users and message authors
-  const mapUser = (user) => {
+  const mapUser = (user: any) => {
     const meta = user.raw_user_meta_data || {};
     return {
       id: user.id,
@@ -124,7 +124,7 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  // Add a new message to the ticket
+  // Add a new message to the ticket or update status
   const { id } = await params;
   const cookieStore = await cookies();
   const supabase = createServerClient(
@@ -147,6 +147,33 @@ export async function POST(
   });
   const isAdmin = profile?.role === "ADMIN";
 
+  // Fetch ticket and owner email for notifications / validations
+  const ticket = await prisma.support_tickets.findUnique({
+    where: { id },
+    include: {
+      users: { select: { email: true, id: true, raw_user_meta_data: true } },
+    },
+  });
+  if (!ticket)
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "";
+  const ticketUrl = `${baseUrl}/support/${id}`;
+
+  const getDisplayName = (user: any) => {
+    const meta = user?.raw_user_meta_data || {};
+    return meta.display_name || user?.email?.split("@")[0] || "User";
+  };
+
+  // Notifications accumulator
+  const notifyMessages: Array<{
+    to: string | string[];
+    subject: string;
+    markdownBody: string;
+    buttonText?: string;
+    buttonUrl?: string;
+  }> = [];
+
   if (status) {
     await prisma.support_tickets.update({
       where: { id },
@@ -164,27 +191,14 @@ export async function POST(
         },
       });
 
-      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "";
-      const ticketUrl = `${baseUrl}/support/${id}`;
-
       const userEmail = ticketRec?.users?.email || session.user?.email || null;
-
       const changer = session.user?.email || session.user?.id || "Someone";
-
-      const notifyMsgs: Array<{
-        to: string | string[];
-        subject: string;
-        markdownBody: string;
-        buttonText?: string;
-        buttonUrl?: string;
-      }> = [];
-
       const title = (ticketRec as any)?.title || "Support ticket";
 
       if (isAdmin) {
         // Admin changed status -> notify ticket owner (user)
         if (userEmail) {
-          notifyMsgs.push({
+          notifyMessages.push({
             to: userEmail,
             subject: `Ticket status updated: ${title}`,
             markdownBody: `
@@ -196,20 +210,20 @@ The status of your support ticket **${title}** was changed to **${status}** by *
         }
       } else {
         // User changed status -> notify support team
-        notifyMsgs.push({
+        notifyMessages.push({
           to: "support@plazen.org",
           subject: `Ticket status updated by user: ${title}`,
           markdownBody: `
 User **${changer}** updated the status of ticket **${title}** to **${status}**.
+
           `.trim(),
           buttonText: "Open Ticket",
           buttonUrl: ticketUrl,
         });
       }
 
-      if (notifyMsgs.length > 0) {
-        // fire-and-forget notifications
-        sendNotifications(notifyMsgs);
+      if (notifyMessages.length > 0) {
+        sendNotifications(notifyMessages);
       }
     } catch (err) {
       // Log and continue
@@ -233,75 +247,101 @@ User **${changer}** updated the status of ticket **${title}** to **${status}**.
       data: { updated_at: new Date() },
     });
 
-    // Notify appropriate party about the new message
-    try {
-      const ticketRec = await prisma.support_tickets.findUnique({
-        where: { id },
-        include: {
-          users: { select: { email: true, raw_user_meta_data: true } },
-        },
-      });
-
-      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "";
-      const ticketUrl = `${baseUrl}/support/${id}`;
-
-      const userEmail = ticketRec?.users?.email || session.user?.email || null;
-
-      const author = session.user?.email || session.user?.id || "Someone";
-
-      const notifyMsgs: Array<{
-        to: string | string[];
-        subject: string;
-        markdownBody: string;
-        buttonText?: string;
-        buttonUrl?: string;
-      }> = [];
-
-      // If an admin posted a public (non-internal) message -> notify the ticket owner
-      if (isAdmin && !createdMsg.is_internal) {
-        if (userEmail) {
-          notifyMsgs.push({
-            to: userEmail,
-            subject: `Response on your ticket: ${(ticketRec as any)?.title || id}`,
+    // Decide who to notify based on who posted the message
+    if (isAdmin) {
+      // Admin posted: if message is not internal, notify ticket owner
+      if (!is_internal) {
+        const ownerEmail = ticket.users?.email || null;
+        if (ownerEmail) {
+          notifyMessages.push({
+            to: ownerEmail,
+            subject: `Reply on ticket: ${ticket.title}`,
             markdownBody: `
-An administrator (${author}) replied to your support ticket:
+A member of the support team has replied to your ticket.
 
-**Message:**
+**Reply:**
 ${message}
 
-View the full conversation and reply: [View Ticket](${ticketUrl})
+View the ticket: [View Ticket](${ticketUrl})
             `.trim(),
             buttonText: "View Ticket",
             buttonUrl: ticketUrl,
           });
         }
-      } else if (!isAdmin) {
-        // If a user posted a message -> notify support team
-        notifyMsgs.push({
-          to: "support@plazen.org",
-          subject: `New message from user on ticket: ${(ticketRec as any)?.title || id}`,
-          markdownBody: `
-User **${author}** posted a new message on ticket **${(ticketRec as any)?.title || id}**:
+      }
+    } else {
+      // Regular user posted: notify support team
+      const userDisplay = getDisplayName(
+        ticket.users || {
+          email: session.user.email,
+          raw_user_meta_data: session.user.user_metadata,
+        },
+      );
+      notifyMessages.push({
+        to: "support@plazen.org",
+        subject: `New message on ticket: ${ticket.title}`,
+        markdownBody: `
+User **${userDisplay}** added a new message to ticket **${ticket.title}**.
 
 **Message:**
 ${message}
 
-Open the ticket: [Open Ticket](${ticketUrl})
-          `.trim(),
-          buttonText: "Open Ticket",
-          buttonUrl: ticketUrl,
-        });
-      }
-
-      if (notifyMsgs.length > 0) {
-        // fire-and-forget
-        sendNotifications(notifyMsgs);
-      }
-    } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error("Error sending notifications for ticket message:", err);
+        `.trim(),
+        buttonText: "Open Ticket",
+        buttonUrl: ticketUrl,
+      });
     }
   }
 
+  // Send notifications (non-blocking; errors are logged inside helper)
+  if (notifyMessages.length > 0) {
+    sendNotifications(notifyMessages);
+  }
+
   return NextResponse.json({ success: true });
+}
+
+// Allow administrators to delete a ticket and associated messages/labels
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params;
+  const cookieStore = await cookies();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { cookies: { get: (name: string) => cookieStore.get(name)?.value } },
+  );
+
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session)
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const profile = await prisma.profiles.findUnique({
+    where: { id: session.user.id },
+  });
+  const isAdmin = profile?.role === "ADMIN";
+  if (!isAdmin)
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  try {
+    // Use a transaction to remove messages and label relations, then the ticket
+    await prisma.$transaction([
+      prisma.support_ticket_messages.deleteMany({ where: { ticket_id: id } }),
+      prisma.support_tickets_labels.deleteMany({ where: { ticket_id: id } }),
+      prisma.support_tickets.delete({ where: { id } }),
+    ]);
+
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error("Failed to delete ticket:", err);
+    return NextResponse.json(
+      { error: "Failed to delete ticket" },
+      { status: 500 },
+    );
+  }
 }

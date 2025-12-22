@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/app/components/ui/button";
 import { format, parseISO } from "date-fns";
 import { ArrowLeft, Send, X, Shield, User } from "lucide-react";
@@ -70,6 +71,7 @@ export function TicketView({ ticketId, isAdmin }: TicketViewProps) {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
   );
+  const router = useRouter();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -208,6 +210,35 @@ export function TicketView({ ticketId, isAdmin }: TicketViewProps) {
       method: "DELETE",
     });
     await refreshTicket();
+  };
+
+  const handleDeleteTicket = async () => {
+    if (!ticket) return;
+    // Confirm destructive action
+    if (
+      !confirm(
+        "Are you sure you want to delete this ticket? This action cannot be undone.",
+      )
+    )
+      return;
+
+    try {
+      const res = await fetch(`/api/support/tickets/${ticket.id}`, {
+        method: "DELETE",
+      });
+
+      if (res.ok) {
+        // Redirect admin back to support list
+        router.push("/admin/support");
+      } else {
+        const data = await res.json().catch(() => ({}));
+        alert(data?.error || "Failed to delete ticket");
+      }
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error("Delete ticket failed:", err);
+      alert("Failed to delete ticket");
+    }
   };
 
   if (loading) {
@@ -482,6 +513,16 @@ export function TicketView({ ticketId, isAdmin }: TicketViewProps) {
                     </option>
                   ))}
                 </select>
+              </div>
+
+              {/* Admin-only destructive action */}
+              <div className="mt-4">
+                <button
+                  onClick={handleDeleteTicket}
+                  className="w-full inline-flex items-center justify-center rounded-md text-sm font-medium bg-destructive text-destructive-foreground h-10 px-3 hover:opacity-90 transition"
+                >
+                  Delete Ticket
+                </button>
               </div>
             </div>
           )}
