@@ -73,10 +73,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const { error } = await supabase.auth.signInWithOAuth({
-        provider: provider as
-          | "github"
-          | "google"
-          | "discord"
+        provider: provider as "github" | "google" | "discord",
       });
       if (error) throw error;
     } catch (error) {
@@ -136,7 +133,7 @@ export default function LoginPage() {
             {!showEmailForm ? (
               <>
                 {/* Social Login Providers */}
-                <div className="grid grid-cols-4 gap-3 mb-6">
+                <div className="flex flex-row justify-center gap-10 mb-6">
                   {socialProviders.map((provider) => {
                     const Icon = provider.icon;
                     return (
