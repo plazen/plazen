@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Lexend, Geist_Mono, Instrument_Sans } from "next/font/google"; // [MODIFIED]
+import { Geist_Mono, Instrument_Sans, Mona_Sans } from "next/font/google";
 import "./globals.css";
 import packageJson from "../../package.json";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -21,15 +21,15 @@ const Mastodon = (props: { className?: string }) => (
   </svg>
 );
 
-const lexend = Lexend({
-  variable: "--font-geist-sans", // We keep this variable name to match globals.css
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600"], // Added weights to match your privacy page
-});
-
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+});
+
+const monaSans = Mona_Sans({
+  variable: "--font-lexend",
+  subsets: ["latin"],
+  weight: ["500"],
 });
 
 const instrumentSans = Instrument_Sans({
@@ -116,9 +116,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <link rel="me" href="https://fosstodon.org/@plazen" />
+      <link rel="preconnect" href="https://fonts.googleapis.com" />
+
       <body
-        className={`${lexend.variable} ${geistMono.variable} ${instrumentSans.variable} antialiased`}
+        className={`${geistMono.variable} ${monaSans.variable} ${instrumentSans.variable} antialiased`}
+        style={{ fontVariationSettings: "'opsz' 40, 'wdth' 100" }}
       >
         <ThemeProvider defaultTheme="dark" storageKey="plazen-theme">
           {children}

@@ -212,7 +212,7 @@ export function generateEmailTemplate(options: EmailTemplateOptions): string {
   <meta name="x-apple-disable-message-reformatting">
   <meta name="format-detection" content="telephone=no,address=no,email=no,date=no,url=no">
   <title>${escapeHtml(title)}</title>
-  <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Mona+Sans:ital,wght@0,200..900;1,200..900&family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
   <!--[if mso]>
   <noscript>
     <xml>
@@ -224,14 +224,14 @@ export function generateEmailTemplate(options: EmailTemplateOptions): string {
   </noscript>
   <![endif]-->
   <style>
-    @import url("https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600&display=swap");
-    body { margin: 0; padding: 0; width: 100% !important; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; background-color: #10131a; font-family: "Lexend", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #F2F2F2; }
+    @import url("https://fonts.googleapis.com/css2?family=Mona+Sans:ital,wght@0,200..900;1,200..900&family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap");
+    body { margin: 0; padding: 0; width: 100% !important; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; background-color: #10131a; font-family: \"Mona Sans\", \"Montserrat\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, sans-serif; color: #F2F2F2; }
     img { border: 0; outline: none; text-decoration: none; -ms-interpolation-mode: bicubic; }
     a { color: #2DD4BF; text-decoration: none; }
     a:hover { text-decoration: underline; }
   </style>
 </head>
-<body style="margin: 0; padding: 0; background-color: #10131a; font-family: 'Lexend', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+<body style="margin: 0; padding: 0; background-color: #10131a; font-family: 'Mona Sans', 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
   ${
     preheader
       ? `
@@ -261,7 +261,7 @@ export function generateEmailTemplate(options: EmailTemplateOptions): string {
             <td style="background-color: #0f1217; border-radius: 12px; padding: 40px; text-align: center; border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 4px 24px rgba(0,0,0,0.2);">
 
               <!-- Title -->
-              <h1 style="font-size: 24px; font-weight: 600; margin: 0 0 16px 0; color: #ffffff; font-family: 'Lexend', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+              <h1 style="font-size: 24px; font-weight: 600; margin: 0 0 16px 0; color: #ffffff; font-family: 'Mona Sans', 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
                 ${escapeHtml(title)}
               </h1>
 
@@ -281,10 +281,10 @@ export function generateEmailTemplate(options: EmailTemplateOptions): string {
             <td style="padding-top: 24px; text-align: center;">
               ${
                 footerText
-                  ? `<p style="font-size: 12px; color: #666677; margin: 0 0 10px 0; font-family: 'Lexend', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">${escapeHtml(footerText)}</p>`
+                  ? `<p style="font-size: 12px; color: #666677; margin: 0 0 10px 0; font-family: 'Mona Sans', 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">${escapeHtml(footerText)}</p>`
                   : ""
               }
-              <p style="font-size: 12px; color: #666677; margin: 0; font-family: 'Lexend', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+              <p style="font-size: 12px; color: #666677; margin: 0; font-family: 'Mona Sans', 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
                 &copy; ${currentYear} <a href="https://plazen.org" style="color: #2DD4BF; text-decoration: none;">Plazen.org</a>
               </p>
             </td>

@@ -19,7 +19,7 @@ const MarkdownStyles = () => (
   <style>
     {`
       .font-lexend {
-        font-family: 'Lexend', sans-serif;
+        font-family: 'Mona Sans', 'Montserrat', sans-serif;
       }
       /* Make headings responsive and theme-aware */
       .prose-custom h1 {
