@@ -62,12 +62,6 @@ const socialProviders = [
     bgColor: "bg-indigo-600 hover:bg-indigo-700",
     name: "Discord",
   },
-  {
-    id: "apple",
-    icon: FaApple,
-    bgColor: "bg-black hover:bg-gray-900",
-    name: "Apple",
-  },
 ];
 
 const AVATAR_BUCKET =
@@ -499,7 +493,7 @@ export default function AccountPage() {
 
     try {
       const { error } = await supabase.auth.linkIdentity({
-        provider: providerId as "github" | "google" | "discord" | "apple",
+        provider: providerId as "github" | "google" | "discord",
         options: {
           redirectTo: `${window.location.origin}/account`,
         },
