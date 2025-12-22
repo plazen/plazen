@@ -110,10 +110,27 @@ module.exports = {
               const lines = [];
               if (contributors.size > 0) {
                 for (const [, info] of contributors) {
+                  const nameClause =
+                    info.name && info.name !== info.username
+                      ? ` (${info.name})`
+                      : "";
                   if (info.url && info.url.startsWith("http")) {
                     lines.push(
-                      `- [${info.username}](${info.url})${info.name && info.name !== info.username ? ` (${info.name})` : ""}`,
+                      `- [@${info.username}](${info.url}) ${nameClause}`,
                     );
+                  } else if (info.url && info.url.startsWith("mailto:")) {
+                    if (info.username) {
+                      lines.push(
+                        `- [@${info.username}](${info.url})${nameClause}`,
+                      );
+                    } else {
+                      lines.push(
+                        `- [${info.name || info.username}](${info.url})`,
+                      );
+                    }
+                  } else if (info.username) {
+                    // Plain @username will trigger a GitHub mention when the changelog is viewed on GitHub.
+                    lines.push(`- @${info.username}${nameClause}`);
                   } else {
                     lines.push(`- ${info.name || info.username}`);
                   }
