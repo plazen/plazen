@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/app/components/ui/button";
 import { format, parseISO } from "date-fns";
 import { ArrowLeft, Send, X, Shield, User } from "lucide-react";
@@ -12,6 +13,8 @@ import { createBrowserClient } from "@supabase/ssr";
 type User = {
   id: string;
   email: string | null;
+  display_name?: string | null;
+  avatar_path?: string | null;
 };
 
 type Label = {
@@ -25,7 +28,7 @@ type TicketLabel = {
 };
 
 type Message = {
-  id:string;
+  id: string;
   message: string;
   created_at: string;
   is_internal: boolean;
@@ -60,11 +63,15 @@ export function TicketView({ ticketId, isAdmin }: TicketViewProps) {
   const [isInternal, setIsInternal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [avatarUrls, setAvatarUrls] = useState<{ [userId: string]: string }>(
+    {},
+  );
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
   );
+  const router = useRouter();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -96,6 +103,38 @@ export function TicketView({ ticketId, isAdmin }: TicketViewProps) {
     };
     fetchData();
   }, [ticketId, isAdmin, supabase.auth]);
+
+  // Fetch signed avatar URLs for all users with avatar_path
+  useEffect(() => {
+    const fetchAvatars = async () => {
+      if (!ticket) return;
+      const users = [ticket.users, ...ticket.messages.map((msg) => msg.user)];
+      const uniqueUsers = Object.values(
+        users.reduce(
+          (acc, user) => {
+            if (user.avatar_path && !acc[user.id]) acc[user.id] = user;
+            return acc;
+          },
+          {} as { [id: string]: User },
+        ),
+      );
+
+      const urlMap: { [userId: string]: string } = {};
+      await Promise.all(
+        uniqueUsers.map(async (user) => {
+          try {
+            const res = await fetch(
+              `/api/account/avatar/signed-url?path=${encodeURIComponent(user.avatar_path!)}`,
+            );
+            const data = await res.json();
+            if (data.url) urlMap[user.id] = data.url;
+          } catch {}
+        }),
+      );
+      setAvatarUrls(urlMap);
+    };
+    fetchAvatars();
+  }, [ticket]);
 
   const refreshTicket = async () => {
     const res = await fetch(`/api/support/tickets/${ticketId}`);
@@ -143,7 +182,7 @@ export function TicketView({ ticketId, isAdmin }: TicketViewProps) {
   };
 
   const handleStatusChange = async (
-    e: React.ChangeEvent<HTMLSelectElement>
+    e: React.ChangeEvent<HTMLSelectElement>,
   ) => {
     const newStatus = e.target.value;
     if (!ticket) return;
@@ -173,6 +212,35 @@ export function TicketView({ ticketId, isAdmin }: TicketViewProps) {
     await refreshTicket();
   };
 
+  const handleDeleteTicket = async () => {
+    if (!ticket) return;
+    // Confirm destructive action
+    if (
+      !confirm(
+        "Are you sure you want to delete this ticket? This action cannot be undone.",
+      )
+    )
+      return;
+
+    try {
+      const res = await fetch(`/api/support/tickets/${ticket.id}`, {
+        method: "DELETE",
+      });
+
+      if (res.ok) {
+        // Redirect admin back to support list
+        router.push("/admin/support");
+      } else {
+        const data = await res.json().catch(() => ({}));
+        alert(data?.error || "Failed to delete ticket");
+      }
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error("Delete ticket failed:", err);
+      alert("Failed to delete ticket");
+    }
+  };
+
   if (loading) {
     return <LoadingSpinner text="Loading ticket..." />;
   }
@@ -187,7 +255,7 @@ export function TicketView({ ticketId, isAdmin }: TicketViewProps) {
 
   const ticketLabels = ticket.labels.map((l) => l.label);
   const availableLabels = allLabels.filter(
-    (l) => !ticketLabels.find((tl) => tl.id === l.id)
+    (l) => !ticketLabels.find((tl) => tl.id === l.id),
   );
 
   return (
@@ -212,10 +280,28 @@ export function TicketView({ ticketId, isAdmin }: TicketViewProps) {
                 </span>
               </div>
               <h1 className="text-2xl font-bold">{ticket.title}</h1>
-              <p className="text-sm text-muted-foreground mt-2">
-                Opened by{" "}
+              <p className="text-sm text-muted-foreground mt-2 flex items-center gap-2">
+                {ticket.users.avatar_path && avatarUrls[ticket.users.id] ? (
+                  <img
+                    src={avatarUrls[ticket.users.id]}
+                    alt={
+                      ticket.users.display_name ||
+                      ticket.users.email ||
+                      "Avatar"
+                    }
+                    className="h-6 w-6 rounded-full object-cover ring-1 ring-background shadow-sm"
+                  />
+                ) : (
+                  <span className="inline-flex h-6 w-6 rounded-full bg-secondary items-center justify-center text-xs font-bold text-foreground">
+                    {ticket.users.display_name ? (
+                      ticket.users.display_name[0]
+                    ) : (
+                      <User className="w-4 h-4" />
+                    )}
+                  </span>
+                )}
                 <span className="font-medium text-foreground">
-                  {ticket.users.email}
+                  {ticket.users.display_name || ticket.users.email}
                 </span>
               </p>
             </div>
@@ -225,20 +311,32 @@ export function TicketView({ ticketId, isAdmin }: TicketViewProps) {
                 .map((msg) => (
                   <div key={msg.id} className="flex gap-4 group">
                     <div className="flex-shrink-0">
-                      <div
-                        className={cn(
-                          "h-10 w-10 rounded-full flex items-center justify-center ring-2 ring-background shadow-sm",
-                          msg.user.id === ticket.user_id
-                            ? "bg-secondary text-foreground"
-                            : "bg-primary/10 text-primary"
-                        )}
-                      >
-                        {msg.user.id === ticket.user_id ? (
-                          <User className="w-5 h-5" />
-                        ) : (
-                          <Shield className="w-5 h-5" />
-                        )}
-                      </div>
+                      {msg.user.avatar_path && avatarUrls[msg.user.id] ? (
+                        <img
+                          src={avatarUrls[msg.user.id]}
+                          alt={
+                            msg.user.display_name || msg.user.email || "Avatar"
+                          }
+                          className="h-10 w-10 rounded-full object-cover ring-2 ring-background shadow-sm"
+                        />
+                      ) : (
+                        <div
+                          className={cn(
+                            "h-10 w-10 rounded-full flex items-center justify-center ring-2 ring-background shadow-sm",
+                            msg.user.id === ticket.user_id
+                              ? "bg-secondary text-foreground"
+                              : "bg-primary/10 text-primary",
+                          )}
+                        >
+                          {msg.user.display_name ? (
+                            msg.user.display_name[0]
+                          ) : msg.user.id === ticket.user_id ? (
+                            <User className="w-5 h-5" />
+                          ) : (
+                            <Shield className="w-5 h-5" />
+                          )}
+                        </div>
+                      )}
                     </div>
                     <div
                       className={cn(
@@ -246,15 +344,15 @@ export function TicketView({ ticketId, isAdmin }: TicketViewProps) {
                         msg.is_internal
                           ? "bg-yellow-500/10 border border-yellow-500/20"
                           : msg.user.id === currentUserId
-                          ? "bg-primary/5 border border-primary/10"
-                          : "bg-secondary/30 border border-border/50"
+                            ? "bg-primary/5 border border-primary/10"
+                            : "bg-secondary/30 border border-border/50",
                       )}
                     >
                       <div className="flex justify-between items-center mb-2">
                         <span className="font-semibold text-sm">
                           {msg.user.id === currentUserId
                             ? "You"
-                            : msg.user.email}
+                            : msg.user.display_name || msg.user.email}
                           {msg.user.id !== ticket.user_id &&
                             !msg.is_internal &&
                             " (Support)"}
@@ -337,8 +435,8 @@ export function TicketView({ ticketId, isAdmin }: TicketViewProps) {
                         ticket.status === "open"
                           ? "bg-green-500"
                           : ticket.status === "in_progress"
-                          ? "bg-blue-500"
-                          : "bg-gray-500"
+                            ? "bg-blue-500"
+                            : "bg-gray-500",
                       )}
                     />
                     <span className="capitalize font-medium">
@@ -358,8 +456,8 @@ export function TicketView({ ticketId, isAdmin }: TicketViewProps) {
                     ticket.priority === "high"
                       ? "bg-red-500/10 text-red-500"
                       : ticket.priority === "low"
-                      ? "bg-green-500/10 text-green-500"
-                      : "bg-blue-500/10 text-blue-500"
+                        ? "bg-green-500/10 text-green-500"
+                        : "bg-blue-500/10 text-blue-500",
                   )}
                 >
                   {ticket.priority}
@@ -415,6 +513,16 @@ export function TicketView({ ticketId, isAdmin }: TicketViewProps) {
                     </option>
                   ))}
                 </select>
+              </div>
+
+              {/* Admin-only destructive action */}
+              <div className="mt-4">
+                <button
+                  onClick={handleDeleteTicket}
+                  className="w-full inline-flex items-center justify-center rounded-md text-sm font-medium bg-destructive text-destructive-foreground h-10 px-3 hover:opacity-90 transition"
+                >
+                  Delete Ticket
+                </button>
               </div>
             </div>
           )}
