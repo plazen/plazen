@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { SMTPClient, EmailMessage } from "@/lib/smtpClient";
 import { generateEmailFromMarkdown } from "@/lib/emailTemplate";
+import { htmlToText } from "html-to-text";
 
 export const dynamic = "force-dynamic";
 
@@ -165,7 +166,7 @@ export async function POST(request: Request) {
       text = emailContent.text;
     } else if (contentType === "html") {
       html = content;
-      text = content.replace(/<[^>]+>/g, ""); // Simple HTML strip for text version
+      text = htmlToText(content);
     } else {
       html = `<p>${content.replace(/\n/g, "<br>")}</p>`;
       text = content;
