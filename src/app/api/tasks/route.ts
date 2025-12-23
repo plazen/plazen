@@ -257,12 +257,20 @@ export async function POST(request: Request) {
       const timetableEnd = new Date(scheduleDay);
       timetableEnd.setHours(timetableEndHour, 0, 0, 0);
 
+      // Compute full-day bounds so we fetch any task/event that falls on the day,
+      // not only those inside the user's timetable window. This ensures occupiedSlots
+      // includes all potential overlaps (early-morning, late-night, external events, etc).
+      const dayStart = new Date(scheduleDay);
+      dayStart.setHours(0, 0, 0, 0);
+      const dayEnd = new Date(scheduleDay);
+      dayEnd.setHours(23, 59, 59, 999);
+
       const existingTasks = await prisma.tasks.findMany({
         where: {
           user_id: session.user.id,
           scheduled_time: {
-            gte: timetableStart,
-            lt: timetableEnd,
+            gte: dayStart,
+            lt: dayEnd,
           },
         },
         orderBy: { scheduled_time: "asc" },
@@ -291,24 +299,37 @@ export async function POST(request: Request) {
         return 0;
       }
 
-      const occupiedSlots: {
+      // Include both user tasks and external events as occupied slots for the day,
+      // then sort them. This ensures we check against ANY task/event that occupies time.
+      // Also include external events for the whole day (not limited to the timetable),
+      // so external events that start outside the timetable but overlap the new task
+      // are considered when building occupiedSlots.
+      const externalEventsForDay = await prisma.external_events.findMany({
+        where: {
+          source: { user_id: session.user.id },
+          start_time: {
+            gte: dayStart,
+            lt: dayEnd,
+          },
+        },
+        include: { source: true },
+      });
+
+      const taskSlots: {
         start: [number, number, number, number, number, number];
         end: [number, number, number, number, number, number];
       }[] = existingTasks
         .filter((task) => task.scheduled_time)
         .map((task) => {
-          // Use the original scheduled_time string parsing
-          const iso = (task.scheduled_time as Date)
-            .toISOString()
-            .replace(/\..*$/, "")
-            .replace("Z", "");
-          const arr = parseLocalDateTimeArr(iso) as [
-            number,
-            number,
-            number,
-            number,
-            number,
-            number,
+          // Use the Date object's local getters to extract the local Y/M/D/H/M/S components.
+          const d = task.scheduled_time as Date;
+          const arr: [number, number, number, number, number, number] = [
+            d.getUTCFullYear(),
+            d.getUTCMonth() + 1,
+            d.getUTCDate(),
+            d.getUTCHours(),
+            d.getUTCMinutes(),
+            d.getUTCSeconds(),
           ];
           const duration = task.duration_minutes || 60;
           const endArr: [number, number, number, number, number, number] = [
@@ -320,6 +341,55 @@ export async function POST(request: Request) {
             endArr[4] -= 60;
           }
           return { start: arr, end: endArr };
+        });
+
+      const externalSlots: {
+        start: [number, number, number, number, number, number];
+        end: [number, number, number, number, number, number];
+      }[] = externalEventsForDay.map((ev) => {
+        const s = ev.start_time as Date;
+        const e = ev.end_time as Date;
+        const arr: [number, number, number, number, number, number] = [
+          s.getUTCFullYear(),
+          s.getUTCMonth() + 1,
+          s.getUTCDate(),
+          s.getUTCHours(),
+          s.getUTCMinutes(),
+          s.getUTCSeconds(),
+        ];
+        // Prefer explicit duration if present, otherwise compute from start/end
+        const duration =
+          ((ev as any).duration_minutes ??
+            Math.max(0, Math.round((e.getTime() - s.getTime()) / 60000))) ||
+          60;
+        const endArr: [number, number, number, number, number, number] = [
+          ...arr,
+        ];
+        endArr[4] += duration; // add minutes
+        while (endArr[4] >= 60) {
+          endArr[3] += 1;
+          endArr[4] -= 60;
+        }
+        return { start: arr, end: endArr };
+      });
+
+      const occupiedSlots: {
+        start: [number, number, number, number, number, number];
+        end: [number, number, number, number, number, number];
+      }[] = [...taskSlots, ...externalSlots].sort((a, b) => {
+        // sort by start minutes to ensure free slot calculation is correct
+        return toMinutes(a.start) - toMinutes(b.start);
+      });
+
+      // Create numeric intervals (minutes since midnight) for easier, robust overlap checks.
+      // Use Math.floor for start and Math.ceil for end to ensure we treat any partial-minute
+      // occupation as blocking the entire minute and avoid accidental touching issues.
+      const occupiedIntervals: { start: number; end: number }[] =
+        occupiedSlots.map((s) => {
+          return {
+            start: Math.floor(toMinutes(s.start)),
+            end: Math.ceil(toMinutes(s.end)),
+          };
         });
 
       const freeSlots: {
@@ -344,16 +414,21 @@ export async function POST(request: Request) {
         }
       }
 
-      occupiedSlots.forEach((slot) => {
-        if (compareDateTimeArr(slot.start, lastEventEnd) > 0) {
-          freeSlots.push({ start: lastEventEnd, end: slot.start });
-        }
-        // max of lastEventEnd and slot.end
-        lastEventEnd =
-          compareDateTimeArr(lastEventEnd, slot.end) > 0
-            ? lastEventEnd
-            : slot.end;
-      });
+      occupiedSlots.forEach(
+        (slot: {
+          start: [number, number, number, number, number, number];
+          end: [number, number, number, number, number, number];
+        }) => {
+          if (compareDateTimeArr(slot.start, lastEventEnd) > 0) {
+            freeSlots.push({ start: lastEventEnd, end: slot.start });
+          }
+          // max of lastEventEnd and slot.end
+          lastEventEnd =
+            compareDateTimeArr(lastEventEnd, slot.end) > 0
+              ? lastEventEnd
+              : slot.end;
+        },
+      );
 
       // timetableEnd is a Date, convert to [y,m,d,h,m,s]
       const timetableEndArr: [number, number, number, number, number, number] =
@@ -444,17 +519,24 @@ export async function POST(request: Request) {
             startArr[3] = h;
             startArr[4] = m;
             startArr[5] = s;
-            // Check for overlap with occupiedSlots (strict interval intersection)
+            // Strict overlap checks:
+            // - new start must NOT fall strictly inside any existing occupied slot
+            // - new end must NOT fall strictly inside any existing occupied slot
+            // - no existing start or end may fall strictly inside the new task interval
+            // - disallow identical starts (avoid duplicate simultaneous tasks)
             const startMins = mins;
             const endMins = startMins + taskDuration;
             let overlaps = false;
-            for (const occ of occupiedSlots) {
-              const occStartMins = toMinutes(occ.start);
-              const occEndMins = toMinutes(occ.end);
-              if (
-                (startMins < occEndMins && endMins > occStartMins) ||
-                startMins === occStartMins
-              ) {
+            // Use the precomputed numeric occupied intervals for robust overlap detection.
+            // Any intersection or touching boundary is considered a conflict:
+            // - if the new interval intersects or touches an existing interval -> disallow.
+            for (const occ of occupiedIntervals) {
+              const occStartMins = occ.start;
+              const occEndMins = occ.end;
+
+              // If intervals intersect or touch at boundaries, treat as overlap.
+              // (i.e. NOT (newEnd <= occStart || newStart >= occEnd))
+              if (!(endMins <= occStartMins || startMins >= occEndMins)) {
                 overlaps = true;
                 break;
               }
@@ -464,6 +546,7 @@ export async function POST(request: Request) {
           if (possibleStarts.length > 0) {
             const chosen =
               possibleStarts[Math.floor(Math.random() * possibleStarts.length)];
+
             scheduledTime = `${chosen[0]}-${String(chosen[1]).padStart(
               2,
               "0",
