@@ -158,8 +158,13 @@ export function toPlainText(content: string): string {
   text = text.replace(/&#039;/g, "'");
   text = text.replace(/&nbsp;/g, " ");
 
-  // Remove any tags that may have appeared after decoding entities
-  text = text.replace(/<[^>]+>/g, "");
+  // Remove any tags that may have appeared after decoding entities.
+  // Repeat until no further tags are found to avoid incomplete multi-character sanitization.
+  let previous: string;
+  do {
+    previous = text;
+    text = text.replace(/<[^>]+>/g, "");
+  } while (text !== previous);
 
   // Clean up whitespace
   text = text.replace(/\n\s*\n/g, "\n\n");
