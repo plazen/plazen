@@ -158,6 +158,9 @@ export function toPlainText(content: string): string {
   text = text.replace(/&#039;/g, "'");
   text = text.replace(/&nbsp;/g, " ");
 
+  // Remove any tags that may have appeared after decoding entities
+  text = text.replace(/<[^>]+>/g, "");
+
   // Clean up whitespace
   text = text.replace(/\n\s*\n/g, "\n\n");
   text = text.trim();
