@@ -151,12 +151,12 @@ export function toPlainText(content: string): string {
   text = text.replace(/<[^>]+>/g, "");
 
   // Decode HTML entities
-  text = text.replace(/&amp;/g, "&");
   text = text.replace(/&lt;/g, "<");
   text = text.replace(/&gt;/g, ">");
   text = text.replace(/&quot;/g, '"');
   text = text.replace(/&#039;/g, "'");
   text = text.replace(/&nbsp;/g, " ");
+  text = text.replace(/&amp;/g, "&");
 
   // Remove any tags that may have appeared after decoding entities.
   // Repeat until no further tags are found to avoid incomplete multi-character sanitization.
