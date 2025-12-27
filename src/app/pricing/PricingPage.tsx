@@ -21,7 +21,7 @@ export default function PricingPage() {
   } | null>(null);
   const [checkingSubscription, setCheckingSubscription] = useState(true);
   const [subscriptionError, setSubscriptionError] = useState<string | null>(
-    null
+    null,
   );
   const [hasSession, setHasSession] = useState(false);
 
@@ -29,7 +29,7 @@ export default function PricingPage() {
     let isMounted = true;
     const supabase = createBrowserClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     );
 
     const checkSubscription = async () => {
@@ -79,7 +79,7 @@ export default function PricingPage() {
         if (isMounted) {
           setSubscription({ isPro: false, provider: null });
           setSubscriptionError(
-            "We couldn't verify your subscription status. Showing standard pricing."
+            "We couldn't verify your subscription status. Showing standard pricing.",
           );
         }
       } finally {
@@ -229,9 +229,19 @@ export default function PricingPage() {
                   <p className="text-muted-foreground">
                     For power users and supporters.
                   </p>
-                  <div className="mt-6 flex items-baseline">
-                    <span className="text-4xl font-bold">$5</span>
+                  <div className="mt-6 flex items-baseline gap-3">
+                    <span className="text-2xl font-semibold text-muted-foreground line-through">
+                      $5
+                    </span>
+                    <span className="text-4xl font-bold text-primary">
+                      $2.5
+                    </span>
                     <span className="text-muted-foreground ml-2">/ month</span>
+                  </div>
+                  <div className="mt-2">
+                    <span className="text-xs text-primary-dark font-medium bg-green-50 px-2 py-1 rounded">
+                      50% off until January 31!
+                    </span>
                   </div>
                 </div>
 
