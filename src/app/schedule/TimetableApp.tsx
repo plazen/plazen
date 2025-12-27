@@ -630,10 +630,10 @@ export default function TimetableApp() {
                 animate={{ opacity: 1, y: 0, height: "auto" }}
                 exit={{ opacity: 0, y: -20, height: 0 }}
                 transition={{ duration: 0.3, ease: "easeOut" }}
-                className="bg-blue-500/10 border border-blue-400/30 text-blue-100 rounded-lg p-4 mb-6 flex items-start justify-between gap-4"
+                className="bg-blue-500/10 border border-blue-400/30 text-foreground dark:text-foreground rounded-lg p-4 mb-6 flex items-start justify-between gap-4"
               >
                 <div className="flex items-start gap-3">
-                  <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5 text-blue-300" />
+                  <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5 text-foreground dark:text-foreground" />
                   <div className="text-sm max-w-none notification-markdown">
                     {" "}
                     <ReactMarkdown>{notification.message || ""}</ReactMarkdown>
@@ -642,7 +642,7 @@ export default function TimetableApp() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7 flex-shrink-0 text-blue-200 hover:bg-blue-400/20 hover:text-white"
+                  className="h-7 w-7 flex-shrink-0 text-foreground dark:text-foreground hover:bg-blue-400/20 hover:text-white"
                   onClick={() => handleDismissNotification(notification.id)}
                 >
                   <X className="w-4 h-4" />
