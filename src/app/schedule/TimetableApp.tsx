@@ -94,6 +94,41 @@ export default function TimetableApp() {
   // Track the current date string to avoid updating tasks for stale dates
   const currentDateRef = React.useRef<string>("");
 
+  // Simple sessionStorage-based cache for tasks per date (TTL: 5 minutes)
+  const CACHE_TTL_MS = 5 * 60 * 1000;
+  const getCacheKey = (dateString: string) => `plazen_tasks_${dateString}`;
+
+  const getCachedTasksForDate = (dateString: string) => {
+    if (typeof window === "undefined") return null;
+    try {
+      const raw = sessionStorage.getItem(getCacheKey(dateString));
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== "object") return null;
+      if (Date.now() - (parsed.ts || 0) > CACHE_TTL_MS) {
+        // expired
+        sessionStorage.removeItem(getCacheKey(dateString));
+        return null;
+      }
+      return parsed.tasks ?? null;
+    } catch (err) {
+      // Corrupt data or unavailable - ignore cache
+      return null;
+    }
+  };
+
+  const setCachedTasksForDate = (dateString: string, tasksToCache: any[]) => {
+    if (typeof window === "undefined") return;
+    try {
+      sessionStorage.setItem(
+        getCacheKey(dateString),
+        JSON.stringify({ ts: Date.now(), tasks: tasksToCache }),
+      );
+    } catch (err) {
+      // ignore storage errors
+    }
+  };
+
   const fetchTasks = useCallback(
     async (selectedDate: Date, skipSync = false) => {
       setTasksLoading(true);
@@ -107,6 +142,83 @@ export default function TimetableApp() {
         // Update the ref to track the current date being fetched
         currentDateRef.current = dateString;
 
+        // If we have a recent cached copy in sessionStorage, use it immediately
+        const cached = getCachedTasksForDate(dateString);
+        if (cached) {
+          if (currentDateRef.current === dateString) {
+            setTasks(cached);
+          }
+          setTasksLoading(false);
+
+          // Fire a background refresh to keep cache up-to-date (non-blocking)
+          (async () => {
+            try {
+              const response = await fetch(
+                `/api/tasks?date=${dateString}&timezoneOffset=${timezoneOffset}`,
+              );
+              if (response.ok) {
+                const fetchedTasks = await response.json();
+                setCachedTasksForDate(dateString, fetchedTasks);
+                if (currentDateRef.current === dateString) {
+                  setTasks(fetchedTasks);
+                }
+              }
+            } catch (err) {
+              console.error("Failed background fetch tasks:", err);
+            }
+          })();
+
+          // Still trigger calendar sync in the background if requested
+          if (!skipSync) {
+            fetch("/api/calendars/sync-all", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              // Pass timezoneOffset so the server knows the exact local 24h window
+              body: JSON.stringify({ date: dateString, timezoneOffset }),
+            })
+              .then((syncResponse) => {
+                if (syncResponse.ok) {
+                  return syncResponse.json();
+                }
+                return null;
+              })
+              .then((syncResult) => {
+                // Only refetch if sync was successful and had calendar sources
+                // AND the user is still viewing the same date
+                if (
+                  syncResult &&
+                  syncResult.synced > 0 &&
+                  currentDateRef.current === dateString
+                ) {
+                  // Refetch tasks to get updated external events (skip sync to avoid loop)
+                  fetch(
+                    `/api/tasks?date=${dateString}&timezoneOffset=${timezoneOffset}`,
+                  )
+                    .then((res) => (res.ok ? res.json() : null))
+                    .then((updatedTasks) => {
+                      // Double-check the date is still current before updating
+                      if (
+                        updatedTasks &&
+                        currentDateRef.current === dateString
+                      ) {
+                        setTasks(updatedTasks);
+                        setCachedTasksForDate(dateString, updatedTasks);
+                      }
+                    })
+                    .catch((err) => {
+                      console.error("Failed to refetch tasks after sync:", err);
+                    });
+                }
+              })
+              .catch((err) => {
+                console.error("Failed to sync calendars:", err);
+              });
+          }
+
+          return;
+        }
+
+        // No valid cache, fetch from server
         const response = await fetch(
           `/api/tasks?date=${dateString}&timezoneOffset=${timezoneOffset}`,
         );
@@ -114,6 +226,9 @@ export default function TimetableApp() {
           throw new Error("Failed to fetch tasks");
         }
         const fetchedTasks = await response.json();
+
+        // Cache the fresh result
+        setCachedTasksForDate(dateString, fetchedTasks);
 
         // Only update if this is still the current date
         if (currentDateRef.current === dateString) {
@@ -152,6 +267,7 @@ export default function TimetableApp() {
                     // Double-check the date is still current before updating
                     if (updatedTasks && currentDateRef.current === dateString) {
                       setTasks(updatedTasks);
+                      setCachedTasksForDate(dateString, updatedTasks);
                     }
                   })
                   .catch((err) => {
@@ -292,7 +408,15 @@ export default function TimetableApp() {
       });
       if (!response.ok) throw new Error("Failed to add task");
       const addedTask = await response.json();
-      setTasks((prev) => [...prev, addedTask]);
+
+      // Update tasks state and cache atomically
+      const cacheDate = toLocalISOString(date || new Date());
+      setTasks((prev) => {
+        const updated = [...prev, addedTask];
+        setCachedTasksForDate(cacheDate, updated);
+        return updated;
+      });
+
       setIsAddTaskModalOpen(false);
     } catch (err) {
       setError(
@@ -312,7 +436,15 @@ export default function TimetableApp() {
       });
       if (!response.ok) throw new Error("Failed to update task status");
       const updatedTask = await response.json();
-      setTasks(tasks.map((task) => (task.id === taskId ? updatedTask : task)));
+
+      const cacheDate = toLocalISOString(date || new Date());
+      setTasks((prev) => {
+        const updated = prev.map((task) =>
+          task.id === taskId ? updatedTask : task,
+        );
+        setCachedTasksForDate(cacheDate, updated);
+        return updated;
+      });
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "An unknown error occurred",
@@ -321,7 +453,12 @@ export default function TimetableApp() {
   };
 
   const handleDeleteTask = async (taskId: string) => {
-    setTasks(tasks.filter((task) => task.id !== taskId));
+    const cacheDate = toLocalISOString(date || new Date());
+    setTasks((prev) => {
+      const updated = prev.filter((task) => task.id !== taskId);
+      setCachedTasksForDate(cacheDate, updated);
+      return updated;
+    });
     try {
       const response = await fetch("/api/tasks", {
         method: "DELETE",
@@ -493,10 +630,10 @@ export default function TimetableApp() {
                 animate={{ opacity: 1, y: 0, height: "auto" }}
                 exit={{ opacity: 0, y: -20, height: 0 }}
                 transition={{ duration: 0.3, ease: "easeOut" }}
-                className="bg-blue-500/10 border border-blue-400/30 text-blue-100 rounded-lg p-4 mb-6 flex items-start justify-between gap-4"
+                className="bg-blue-500/10 border border-blue-400/30 text-foreground dark:text-foreground rounded-lg p-4 mb-6 flex items-start justify-between gap-4"
               >
                 <div className="flex items-start gap-3">
-                  <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5 text-blue-300" />
+                  <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5 text-foreground dark:text-foreground" />
                   <div className="text-sm max-w-none notification-markdown">
                     {" "}
                     <ReactMarkdown>{notification.message || ""}</ReactMarkdown>
@@ -505,7 +642,7 @@ export default function TimetableApp() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7 flex-shrink-0 text-blue-200 hover:bg-blue-400/20 hover:text-white"
+                  className="h-7 w-7 flex-shrink-0 text-foreground dark:text-foreground hover:bg-blue-400/20 hover:text-white"
                   onClick={() => handleDismissNotification(notification.id)}
                 >
                   <X className="w-4 h-4" />

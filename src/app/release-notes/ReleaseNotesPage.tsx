@@ -38,6 +38,7 @@ export default function ReleaseNotesPage() {
     <div className="font-lexend">
       <style>
         {`
+          .font-lexend { font-family: 'Mona Sans', 'Montserrat', sans-serif; }
           /* Hover heading color (keeps existing behavior) */
           .note-item:hover h2 {
             color: var(--color-primary);

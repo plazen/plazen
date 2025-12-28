@@ -66,7 +66,7 @@ export async function GET(req: Request) {
       background: bg,
       color: fg,
       fontFamily:
-        'Lexend, Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial',
+        'Mona Sans, Montserrat, Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial',
       boxSizing: "border-box",
     };
 
@@ -147,7 +147,7 @@ export async function GET(req: Request) {
       const MAX_TOTAL_FONT_BYTES = 300 * 1024;
 
       const gfCss = await fetch(
-        "https://fonts.googleapis.com/css2?family=Lexend:wght@400;700&display=swap",
+        "https://fonts.googleapis.com/css2?family=Mona+Sans:ital,wght@0,200..900;1,200..900&family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap",
       ).then((r) => r.text());
 
       const faceRegex = /@font-face\s*{[^}]*}/g;
@@ -180,7 +180,7 @@ export async function GET(req: Request) {
                 break;
               }
               fonts.push({
-                name: "Lexend",
+                name: "Mona Sans",
                 data: buf,
                 weight: parseInt(weightMatch[1], 10),
                 style: "normal",

@@ -39,10 +39,10 @@ export default function App() {
       <>
         <style>
           {`
-            @import url('https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600&display=swap');
+            @import url('https://fonts.googleapis.com/css2?family=Mona+Sans:ital,wght@0,200..900;1,200..900&family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap');
 
             .font-lexend {
-              font-family: 'Lexend', sans-serif;
+              font-family: 'Mona Sans', 'Montserrat', sans-serif;
             }
             .prose-custom h2, .prose-custom h3 {
                     font-weight: 600;

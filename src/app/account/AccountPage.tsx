@@ -62,12 +62,6 @@ const socialProviders = [
     bgColor: "bg-indigo-600 hover:bg-indigo-700",
     name: "Discord",
   },
-  {
-    id: "apple",
-    icon: FaApple,
-    bgColor: "bg-black hover:bg-gray-900",
-    name: "Apple",
-  },
 ];
 
 const AVATAR_BUCKET =
@@ -186,6 +180,49 @@ export default function AccountPage() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
   );
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Account page client-side cache helpers (sessionStorage, TTL 5 minutes)
+  const ACCOUNT_CACHE_TTL_MS = 5 * 60 * 1000;
+  const accountCacheKey = (name: string) => `plazen_account_${name}`;
+
+  const readCache = (name: string) => {
+    if (typeof window === "undefined") return null;
+    try {
+      const raw = sessionStorage.getItem(accountCacheKey(name));
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== "object") return null;
+      if (Date.now() - (parsed.ts || 0) > ACCOUNT_CACHE_TTL_MS) {
+        sessionStorage.removeItem(accountCacheKey(name));
+        return null;
+      }
+      return parsed.value ?? null;
+    } catch (err) {
+      console.error("Account cache read error:", err);
+      return null;
+    }
+  };
+
+  const writeCache = (name: string, value: any) => {
+    if (typeof window === "undefined") return;
+    try {
+      sessionStorage.setItem(
+        accountCacheKey(name),
+        JSON.stringify({ ts: Date.now(), value }),
+      );
+    } catch (err) {
+      console.error("Account cache write error:", err);
+    }
+  };
+
+  const invalidateCache = (name: string) => {
+    if (typeof window === "undefined") return;
+    try {
+      sessionStorage.removeItem(accountCacheKey(name));
+    } catch (err) {
+      console.error("Account cache invalidate error:", err);
+    }
+  };
 
   const fetchAvatarSignedUrl = useCallback(async (path: string) => {
     try {
@@ -323,6 +360,40 @@ export default function AccountPage() {
           fetchSubscription(),
           fetchCalendarSources(),
         ]);
+        // Try to read cached account data (non-blocking, show immediately if present)
+        const cachedSettings = readCache("settings");
+        const cachedStats = readCache("stats");
+        const cachedSubscription = readCache("subscription");
+
+        if (cachedSettings) {
+          setNotifications({
+            notifications: cachedSettings.notifications ?? true,
+          });
+        }
+        if (cachedStats) {
+          setStats(cachedStats);
+        }
+        if (cachedSubscription) {
+          setSubscription(cachedSubscription);
+        }
+
+        // Background refresh to keep cache fresh. Each fetch returns its data which we persist.
+        (async () => {
+          try {
+            const [freshSettings, freshStats, freshSubscription] =
+              await Promise.all([
+                fetchSettings(),
+                fetchStats(),
+                fetchSubscription(),
+              ]);
+            if (freshSettings) writeCache("settings", freshSettings);
+            if (freshStats) writeCache("stats", freshStats);
+            if (freshSubscription)
+              writeCache("subscription", freshSubscription);
+          } catch (err) {
+            console.error("Failed background refresh of account data:", err);
+          }
+        })();
       } else {
         router.push("/login");
       }
@@ -379,10 +450,12 @@ export default function AccountPage() {
       if (res.ok) {
         const data = await res.json();
         setSubscription(data);
+        return data;
       }
     } catch (error) {
       console.error("Failed to fetch subscription:", error);
     }
+    return null;
   };
 
   const fetchSettings = async () => {
@@ -391,10 +464,12 @@ export default function AccountPage() {
       if (response.ok) {
         const data = await response.json();
         setNotifications({ notifications: data.notifications ?? true });
+        return data;
       }
     } catch (error) {
       console.error("Failed to fetch settings:", error);
     }
+    return null;
   };
 
   const fetchStats = async () => {
@@ -417,16 +492,20 @@ export default function AccountPage() {
               )
             : 60;
 
-        setStats({
+        const computedStats = {
           totalTasks: tasks.length,
           completedTasks: completed,
           dailyStreak: calculateDailyStreak(tasks),
           avgTaskDuration: avgDuration,
-        });
+        };
+
+        setStats(computedStats);
+        return computedStats;
       }
     } catch (error) {
       console.error("Failed to fetch stats:", error);
     }
+    return null;
   };
 
   const calculateDailyStreak = (
@@ -570,7 +649,7 @@ export default function AccountPage() {
 
     try {
       const { error } = await supabase.auth.linkIdentity({
-        provider: providerId as "github" | "google" | "discord" | "apple",
+        provider: providerId as "github" | "google" | "discord",
         options: {
           redirectTo: `${window.location.origin}/account`,
         },
@@ -686,6 +765,9 @@ export default function AccountPage() {
         body: JSON.stringify({ [key]: value }),
       });
       if (!response.ok) throw new Error("Failed to update settings");
+
+      // Invalidate cached settings so next visit / background refresh will fetch fresh settings
+      invalidateCache("settings");
     } catch (error) {
       console.error("Failed to save settings:", error);
       setNotifications((prev) => ({ ...prev, [key]: !value }));

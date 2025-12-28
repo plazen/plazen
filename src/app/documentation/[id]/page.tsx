@@ -19,7 +19,7 @@ const MarkdownStyles = () => (
   <style>
     {`
       .font-lexend {
-        font-family: 'Lexend', sans-serif;
+        font-family: 'Mona Sans', 'Montserrat', sans-serif;
       }
       /* Responsive, theme-aware headings for documentation pages */
       /* Top-level markdown <h1> inside prose-custom (theme-aware + responsive) */

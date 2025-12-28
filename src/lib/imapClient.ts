@@ -65,7 +65,7 @@ class IMAPConnection {
   private connected: boolean = false;
   private secure: boolean = false;
   private currentMailbox: MailboxInfo | null = null;
-  private responseResolver: ((data: string) => void) | null = null;
+  private responseResolver: (() => boolean | void) | null = null;
   private untaggedResponses: string[] = [];
 
   constructor(config: IMAPConfig) {
@@ -188,18 +188,27 @@ class IMAPConnection {
         return false;
       };
 
-      this.responseResolver = () => {
-        checkResponse();
-      };
+      this.responseResolver = () => checkResponse();
 
       checkResponse();
     });
   }
 
-  private handleData(data: Buffer): void {
-    this.responseBuffer += data.toString();
+  private handleData(data: Buffer | string | Uint8Array): void {
+    let chunk: string;
+    if (typeof data === "string") {
+      chunk = data;
+    } else if (Buffer.isBuffer(data)) {
+      chunk = data.toString();
+    } else {
+      chunk = Buffer.from(data).toString();
+    }
+
+    this.responseBuffer += chunk;
     if (this.responseResolver) {
-      this.responseResolver(this.responseBuffer);
+      // Call resolver without passing the buffer; resolver will inspect
+      // `this.responseBuffer` and may return true if it handled a tagged response.
+      this.responseResolver();
     }
   }
 
@@ -242,13 +251,37 @@ class IMAPConnection {
       };
 
       const tlsSocket = tls.connect(tlsOptions, () => {
+        if (process.env.IMAP_DEBUG === "true") {
+          try {
+            console.debug(
+              "[IMAP] STARTTLS upgrade: authorized=",
+              tlsSocket.authorized,
+              "authorizationError=",
+              tlsSocket.authorizationError,
+            );
+            const peer = tlsSocket.getPeerCertificate(true) || {};
+            console.debug(
+              "[IMAP] STARTTLS peer subject:",
+              peer.subject,
+              "issuer:",
+              peer.issuer,
+            );
+          } catch (e) {
+            console.debug("[IMAP] STARTTLS debug failed:", e);
+          }
+        }
+
         this.socket = tlsSocket;
         this.secure = true;
         resolve();
       });
 
       tlsSocket.on("data", (data) => this.handleData(data));
-      tlsSocket.on("error", reject);
+      tlsSocket.on("error", (err) => {
+        if (process.env.IMAP_DEBUG === "true")
+          console.error("[IMAP] TLS error (upgrade):", err);
+        reject(err);
+      });
     });
   }
 
@@ -263,10 +296,32 @@ class IMAPConnection {
         this.socket = tls.connect(
           {
             ...connectOptions,
+            servername: this.config.host,
           },
           () => {
             this.connected = true;
             this.secure = true;
+
+            if (process.env.IMAP_DEBUG === "true") {
+              try {
+                const s = this.socket as tls.TLSSocket;
+                console.debug(
+                  "[IMAP] TLS connect: authorized=",
+                  s.authorized,
+                  "authorizationError=",
+                  s.authorizationError,
+                );
+                const peer = s.getPeerCertificate(true) || {};
+                console.debug(
+                  "[IMAP] TLS peer subject:",
+                  peer.subject,
+                  "issuer:",
+                  peer.issuer,
+                );
+              } catch (e) {
+                console.debug("[IMAP] TLS connect debug failed:", e);
+              }
+            }
           },
         );
       } else {
@@ -276,7 +331,11 @@ class IMAPConnection {
       }
 
       this.socket.on("data", (data) => this.handleData(data));
-      this.socket.on("error", (err) => reject(err));
+      this.socket.on("error", (err) => {
+        if (process.env.IMAP_DEBUG === "true")
+          console.error("[IMAP] socket error:", err);
+        reject(err);
+      });
       this.socket.on("close", () => {
         this.connected = false;
       });

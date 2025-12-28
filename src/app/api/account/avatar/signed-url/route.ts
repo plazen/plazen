@@ -14,7 +14,7 @@ export async function GET(request: Request) {
   if (!path) {
     return NextResponse.json(
       { error: "Missing required 'path' parameter." },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -38,7 +38,7 @@ export async function GET(request: Request) {
           cookieStore.delete({ name, ...options });
         },
       },
-    }
+    },
   );
 
   const {
@@ -49,10 +49,6 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  if (!path.startsWith(`${session.user.id}/`)) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-
   const serviceRoleKey =
     process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
 
@@ -60,7 +56,7 @@ export async function GET(request: Request) {
     console.error("Missing service role key for avatar signed URLs.");
     return NextResponse.json(
       { error: "Avatar previews are unavailable. Please contact support." },
-      { status: 503 }
+      { status: 503 },
     );
   }
 
@@ -72,7 +68,7 @@ export async function GET(request: Request) {
         autoRefreshToken: false,
         persistSession: false,
       },
-    }
+    },
   );
 
   const { data, error } = await supabaseAdmin.storage
@@ -83,7 +79,7 @@ export async function GET(request: Request) {
     console.error("Failed to generate signed avatar URL:", error);
     return NextResponse.json(
       { error: "Unable to load avatar. Please try again." },
-      { status: 500 }
+      { status: 500 },
     );
   }
 
