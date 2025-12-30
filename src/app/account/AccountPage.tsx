@@ -443,27 +443,34 @@ export default function AccountPage() {
 
     const completedDays = new Set<string>();
 
+    // Use the ISO date portion (YYYY-MM-DD) directly from the scheduled_time string
+    // to avoid timezone shifts caused by Date parsing and local/UTC conversions.
     tasks.forEach((task) => {
       if (!task.is_completed || !task.scheduled_time) return;
-      const taskDate = new Date(task.scheduled_time);
-      const dayKey = `${taskDate.getFullYear()}-${String(
-        taskDate.getMonth() + 1,
-      ).padStart(2, "0")}-${String(taskDate.getDate()).padStart(2, "0")}`;
-      completedDays.add(dayKey);
+      const iso = String(task.scheduled_time);
+      const dayKey = iso.split("T")[0]; // safe even if scheduled_time already is a date string
+      if (dayKey) completedDays.add(dayKey);
     });
 
     let streak = 0;
-    const currentDay = new Date();
-    currentDay.setHours(0, 0, 0, 0);
+
+    const getLocalYYYYMMDD = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+        d.getDate(),
+      ).padStart(2, "0")}`;
+
+    // Start from today's local date (YYYY-MM-DD) to match how external events are adjusted
+    // and how scheduled_time date parts are produced on the server.
+    const todayKey = getLocalYYYYMMDD(new Date());
+    let cursorKey = todayKey;
 
     while (true) {
-      const dayKey = `${currentDay.getFullYear()}-${String(
-        currentDay.getMonth() + 1,
-      ).padStart(2, "0")}-${String(currentDay.getDate()).padStart(2, "0")}`;
-
-      if (completedDays.has(dayKey)) {
+      if (completedDays.has(cursorKey)) {
         streak++;
-        currentDay.setDate(currentDay.getDate() - 1);
+        // Move cursor one day back preserving local-date arithmetic
+        const d = new Date(`${cursorKey}T00:00:00`);
+        d.setDate(d.getDate() - 1);
+        cursorKey = getLocalYYYYMMDD(d);
       } else {
         break;
       }
