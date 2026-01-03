@@ -53,7 +53,7 @@
     "@types/html-to-text": "^9.0.4",
     "@types/jest": "^30.0.0",
     "@types/node": "^25",
-    "@types/pg": "^8.15.6",
+    "@types/pg": "^8.16.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "babel-jest": "^30.2.0",
