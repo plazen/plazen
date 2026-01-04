@@ -69,7 +69,7 @@ Follow these instructions to get a local copy up and running for development and
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/your-username/plazen.org.git
+git clone https://github.com/plazen/plazen.git
 cd plazen.org
 ```
 
