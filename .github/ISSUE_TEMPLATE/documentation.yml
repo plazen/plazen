@@ -1,0 +1,84 @@
+name: 📚 Documentation Improvement
+description: Suggest improvements to documentation, fix typos, or request clarification
+labels: ["documentation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve Plazen's documentation! Clear documentation helps everyone in our community.
+
+  - type: dropdown
+    id: doc-type
+    attributes:
+      label: Documentation Type
+      description: What type of documentation needs improvement?
+      options:
+        - README
+        - Code Comments
+        - API Documentation
+        - Contributing Guide
+        - Setup/Installation Guide
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: location
+    attributes:
+      label: Location
+      description: Where is the documentation that needs improvement? (file path, URL, or section name)
+      placeholder: e.g., README.md, CONTRIBUTING.md, src/lib/utils.ts
+    validations:
+      required: true
+
+  - type: dropdown
+    id: improvement-type
+    attributes:
+      label: Type of Improvement
+      description: What kind of improvement are you suggesting?
+      options:
+        - Fix typo/grammar
+        - Add missing information
+        - Clarify existing content
+        - Update outdated information
+        - Add code examples
+        - Improve formatting
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: current-content
+    attributes:
+      label: Current Content
+      description: What does the current documentation say? (if applicable)
+      placeholder: Paste the current content or describe it
+    validations:
+      required: false
+
+  - type: textarea
+    id: suggested-improvement
+    attributes:
+      label: Suggested Improvement
+      description: What should the documentation say instead? Be as specific as possible.
+      placeholder: Describe your suggested changes or provide the corrected text
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: Any additional information that might be helpful
+      placeholder: Add any other context, screenshots, or references here
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution
+      description: Would you like to contribute this documentation fix?
+      options:
+        - label: I would like to submit a pull request for this documentation improvement
+          required: false

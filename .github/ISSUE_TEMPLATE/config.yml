@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 💬 Discussions
+    url: https://github.com/plazen/plazen/discussions
+    about: Ask questions and discuss ideas with the community
+  - name: 📖 Documentation
+    url: https://github.com/plazen/plazen#readme
+    about: Read the documentation before opening an issue
+  - name: 🔒 Security Vulnerability
+    url: https://github.com/plazen/plazen/security/policy
+    about: Report security vulnerabilities privately
