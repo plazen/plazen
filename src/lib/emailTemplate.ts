@@ -349,12 +349,7 @@ export function generateEmailTemplate(options: EmailTemplateOptions): string {
 
           <!-- Card -->
           <tr>
-            <td style="background-color: #0f1217; border-radius: 12px; padding: 40px; text-align: center; border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 4px 24px rgba(0,0,0,0.2);">
-
-              <!-- Title -->
-              <h1 style="font-size: 24px; font-weight: 600; margin: 0 0 16px 0; color: #ffffff; font-family: 'Mona Sans', 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-                ${escapeHtml(title)}
-              </h1>
+            <td style="background-color: #0f1217; border-radius: 12px; padding: 40px; text-align: left; border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 4px 24px rgba(0,0,0,0.2);">
 
               <!-- Content -->
               <div style="text-align: center;">
