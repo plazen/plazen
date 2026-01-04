@@ -1,3 +1,30 @@
+/*
+ * API: /api/support/tickets/[id]
+ *
+ * Purpose:
+ * - Provide server-side handlers for operations on a single support ticket:
+ *   - GET  /api/support/tickets/[id]   -> Return the ticket with messages, labels and user display info.
+ *   - POST /api/support/tickets/[id]   -> Add a message to the ticket, and/or update its status.
+ *   - DELETE /api/support/tickets/[id] -> Admin-only: delete the ticket and associated messages/labels.
+ *
+ * Authentication & Authorization:
+ * - Handlers validate a Supabase session using the SSR client wired to Next's cookie store.
+ * - GET/POST require an authenticated session. GET enforces access control so regular users
+ *   may only fetch their own tickets while admins can fetch any ticket.
+ * - POST allows admins to mark messages as internal and to update status; regular users cannot
+ *   create internal messages and may only update their own tickets where permitted.
+ * - DELETE is restricted to users with `profiles.role === 'ADMIN'`.
+ *
+ * Behavior and side-effects:
+ * - Uses Prisma for database operations and an SMTP client + markdown template generator
+ *   to send notification emails as best-effort (email failures are logged and do not block
+ *   the primary DB operation).
+ * - Responses are JSON. Errors use the shape { error: string } with an appropriate HTTP status code.
+ *
+ * Notes:
+ * - Sensitive user metadata (like raw_user_meta_data) is read only to present display_name/avatar
+ *   for the UI; tokens/credentials are not exposed here.
+ */
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";

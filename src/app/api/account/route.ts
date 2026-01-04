@@ -1,3 +1,30 @@
+/**
+ * account/route.ts
+ *
+ * API handlers related to the authenticated user's account.
+ *
+ * Exports:
+ * - DELETE: Remove the current user's account and purge associated application data.
+ *
+ * Behaviour and notes:
+ * - Uses Supabase server-side helpers to validate the session and to perform
+ *   admin-level user deletion (via a service role key).
+ * - Prior to deleting the auth user, the handler attempts to purge application
+ *   data related to the user (tasks, routine templates, profile, subscriptions,
+ *   support tickets/messages, settings) in a single database transaction to
+ *   keep the database consistent.
+ * - Returns structured JSON responses complying with Next.js Edge Route/Route
+ *   handler expectations (NextResponse).
+ *
+ * Security:
+ * - Requires a valid Supabase session. The Supabase service role key is read
+ *   from environment variables. If the service role key is missing the handler
+ *   returns a 500 and does not attempt account deletion.
+ *
+ * Usage:
+ * - Called by the client when a user requests account deletion. The handler
+ *   performs best-effort cleanup and surfaces errors for operator visibility.
+ */
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
@@ -21,7 +48,7 @@ export async function DELETE() {
           cookieStore.delete({ name, ...options });
         },
       },
-    }
+    },
   );
 
   const {
@@ -48,7 +75,7 @@ export async function DELETE() {
     console.error("Failed to purge user data before deletion:", error);
     return NextResponse.json(
       { error: "Failed to purge account data. Please contact support." },
-      { status: 500 }
+      { status: 500 },
     );
   }
 
@@ -59,7 +86,7 @@ export async function DELETE() {
     console.error("Missing Supabase service role key for account deletion.");
     return NextResponse.json(
       { error: "Account deletion is unavailable. Please contact support." },
-      { status: 500 }
+      { status: 500 },
     );
   }
 
@@ -71,18 +98,17 @@ export async function DELETE() {
         autoRefreshToken: false,
         persistSession: false,
       },
-    }
+    },
   );
 
-  const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(
-    userId
-  );
+  const { error: deleteError } =
+    await supabaseAdmin.auth.admin.deleteUser(userId);
 
   if (deleteError) {
     console.error("Failed to delete Supabase auth user:", deleteError);
     return NextResponse.json(
       { error: "Failed to delete account. Please contact support." },
-      { status: 500 }
+      { status: 500 },
     );
   }
 

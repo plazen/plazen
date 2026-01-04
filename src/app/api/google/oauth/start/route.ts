@@ -1,3 +1,29 @@
+/*
+ * API: GET /api/google/oauth/start
+ *
+ * Purpose:
+ * - Initiate the Google OAuth2 authorization flow for linking a user's Google Calendar.
+ * - Returns a JSON object containing an authorization `url` the client should redirect the user to.
+ *
+ * Authentication:
+ * - Requires an active Supabase session cookie. Returns 401 if unauthenticated.
+ *
+ * Behavior:
+ * - Constructs an OAuth2 authorization URL using the configured `GOOGLE_CLIENT_ID`
+ *   and a callback URL under the current request origin (`/api/google/oauth/callback`).
+ * - Requests offline access and forces consent (to maximize the chance Google returns a refresh token).
+ * - Sets the `state` parameter to the session user id; the callback handler must validate this
+ *   to protect against CSRF/mismatched flows.
+ *
+ * Query / Response:
+ * - On success: HTTP 200 with JSON { url: string }.
+ * - 401: { error: "Unauthorized" } when no valid session is present.
+ * - 500: { error: "Server misconfigured: missing GOOGLE_CLIENT_ID" } when env is missing.
+ *
+ * Notes:
+ * - The client should redirect the user to the returned `url`. Google will redirect back to the
+ *   callback endpoint where the code will be exchanged for tokens and persisted (server-side).
+ */
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";

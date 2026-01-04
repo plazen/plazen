@@ -1,3 +1,30 @@
+/*
+ * API: /api/routine-tasks/[id]
+ *
+ * Endpoints:
+ * - PATCH /api/routine-tasks/[id]
+ *   - Purpose: Update a routine task template belonging to the authenticated user.
+ *   - Request body fields: { title?, description?, duration_minutes?, is_active? }
+ *   - Behavior: Encrypts `title` before persisting, updates `updated_at`, and
+ *     returns the updated routine task with the title decrypted for safe display.
+ *
+ * - DELETE /api/routine-tasks/[id]
+ *   - Purpose: Delete a routine task template belonging to the authenticated user.
+ *   - Behavior: Removes the task row when it belongs to the session user.
+ *
+ * Authentication:
+ * - All handlers require an active Supabase session (validated via the SSR client
+ *   and Next's cookie helpers). Requests without a valid session receive 401.
+ *
+ * Responses:
+ * - 200 / 201 on success (handlers document specifics inline).
+ * - 401 when unauthenticated.
+ * - 400/403/500 for various validation/permission/server errors as appropriate.
+ *
+ * Notes:
+ * - Titles are stored encrypted at rest using the project's encryption helpers.
+ * - Handlers are implemented server-side and use Prisma for DB access.
+ */
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
@@ -6,9 +33,29 @@ import { encrypt, decrypt } from "@/lib/encryption";
 
 export const dynamic = "force-dynamic";
 
+/*
+ * PATCH /api/routine-tasks/[id]
+ *
+ * Purpose:
+ * - Update a routine task template owned by the authenticated user.
+ *
+ * Expected request body (any subset):
+ * - { title?: string, description?: string | null, duration_minutes?: number, is_active?: boolean }
+ *
+ * Behavior:
+ * - Validates the Supabase session server-side.
+ * - Encrypts the `title` (if provided) before persisting.
+ * - Updates `updated_at` to the current time.
+ * - Returns the updated routine task with the `title` decrypted in the response.
+ *
+ * Responses:
+ * - 200: updated routine task (title decrypted)
+ * - 401: { error: "Unauthorized" } when not authenticated
+ * - 500: { error: "Internal server error" } on unexpected errors
+ */
 export async function PATCH(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
   const cookieStore = await cookies();
@@ -27,7 +74,7 @@ export async function PATCH(
           cookieStore.delete({ name, ...options });
         },
       },
-    }
+    },
   );
 
   const {
@@ -86,21 +133,36 @@ export async function PATCH(
     console.error("Error updating routine task:", error);
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
+/*
+ * DELETE /api/routine-tasks/[id]
+ *
+ * Purpose:
+ * - Delete a routine task template owned by the authenticated user.
+ *
+ * Behavior:
+ * - Validates the Supabase session server-side.
+ * - Deletes the specified routine task, ensuring the row belongs to the session user.
+ *
+ * Responses:
+ * - 200: { message: "Routine task deleted successfully" } on success
+ * - 401: { error: "Unauthorized" } when not authenticated
+ * - 500: { error: "Internal server error" } on unexpected errors
+ */
 export async function DELETE(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
   const cookieStore = await cookies();
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { cookies: { get: (name: string) => cookieStore.get(name)?.value } }
+    { cookies: { get: (name: string) => cookieStore.get(name)?.value } },
   );
 
   const {
@@ -121,13 +183,13 @@ export async function DELETE(
 
     return NextResponse.json(
       { message: "Routine task deleted successfully" },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error deleting routine task:", error);
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

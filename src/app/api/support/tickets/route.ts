@@ -1,3 +1,40 @@
+/*
+ * API: /api/support/tickets
+ *
+ * Purpose:
+ * - Provide support ticket creation and listing for users, and ticket management
+ *   operations for administrators. The handlers below coordinate DB operations,
+ *   email notifications and enforce appropriate authentication/authorization.
+ *
+ * Supported endpoints:
+ * - POST /api/support/tickets
+ *   - Purpose: Create a new support ticket with an initial message.
+ *   - Auth: Requires an active session (authenticated user).
+ *   - Request body: { title: string, message?: string, priority?: string }
+ *   - Side-effects: Creates a ticket and an initial message, and sends notification
+ *     emails to the support team and the ticket creator (best-effort; email failures
+ *     do not block ticket creation).
+ *   - Response: 200/201 with the created ticket JSON or an error JSON on failure.
+ *
+ * - GET /api/support/tickets
+ *   - Purpose: List tickets visible to the current user.
+ *   - Auth: Requires an active session.
+ *   - Behavior:
+ *     - Admin users receive all tickets.
+ *     - Regular users receive only their own tickets.
+ *   - Response: 200 with an array of tickets (including message counts, labels, etc).
+ *
+ * Notes on email notifications:
+ * - Sending emails is implemented as a best-effort background-style helper: failures
+ *   are logged but do not cause ticket creation or updates to fail.
+ *
+ * Security:
+ * - All handlers validate the user's session server-side and enforce RBAC for
+ *   admin-only actions where applicable.
+ *
+ * Response shape:
+ * - On error handlers return JSON { error: string } with appropriate HTTP status codes.
+ */
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";

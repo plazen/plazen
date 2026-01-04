@@ -5,20 +5,47 @@ import prisma from "@/lib/prisma";
 import { encrypt } from "@/lib/encryption";
 import { syncGoogleSource } from "@/lib/googleService";
 
-/**
- * Google OAuth2 callback handler
+/*
+ * API: GET /api/google/oauth/callback
  *
- * Expected query params:
- * - code: authorization code from Google
- * - state: the user id we issued earlier to validate request ownership
+ * Purpose:
+ * - Handle Google's OAuth2 redirect and persist tokens required to access the
+ *   user's Google Calendar. This endpoint finalizes the OAuth flow started by
+ *   `/api/google/oauth/start`.
+ *
+ * Query params:
+ * - code (required): authorization code returned by Google.
+ * - state (required): the user id that was set as `state` during the start step;
+ *   used to validate ownership and mitigate CSRF/mismatched-flow attacks.
+ * - error (optional): OAuth error string returned by Google (e.g. consent_denied).
  *
  * Behavior:
- * - Validates session and that state equals the logged-in user id.
- * - Exchanges the authorization code for tokens at Google's token endpoint.
- * - Persists refresh_token (and access_token if present) encrypted into calendar_sources.
- *   If a google-type calendar_sources row already exists for the user, it will be updated.
- * - Triggers an initial sync via syncGoogleSource (best-effort).
- * - Redirects back to the account page with a success or error flag.
+ * - Validates there is an active Supabase session and that the `state` matches
+ *   the logged-in user's id.
+ * - Exchanges the authorization `code` for tokens at Google's token endpoint.
+ * - Encrypts and stores tokens in `calendar_sources`:
+ *   - access_token -> stored in `username` (encrypted) when present
+ *   - refresh_token -> stored in `password` (encrypted) when present
+ *   - ensures a `google` type calendar_sources row exists or updates an existing one.
+ * - Triggers an initial sync via `syncGoogleSource` as a best-effort operation; sync
+ *   errors are logged but do not prevent redirecting the user.
+ * - Redirects the user back to the client (typically `/account`) with query flags
+ *   indicating success or the type of failure.
+ *
+ * Responses / Redirects:
+ * - On success: redirect to `/account?google_linked=1`.
+ * - On OAuth/user errors: redirect to `/account?google_link_error=<reason>`.
+ * - If no session: redirect to `/login?error=not_signed_in`.
+ * - If server is misconfigured (missing client secrets): redirect with an appropriate
+ *   error flag.
+ *
+ * Authentication:
+ * - Requires an active Supabase session cookie; the handler verifies session server-side.
+ *
+ * Notes:
+ * - The endpoint intentionally avoids failing the user flow when the initial sync
+ *   fails; users can trigger manual syncs later. Sensitive tokens are stored
+ *   encrypted using the project's encryption helpers.
  */
 export async function GET(request: Request) {
   const cookieStore = await cookies();

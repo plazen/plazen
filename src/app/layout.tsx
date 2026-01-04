@@ -1,3 +1,13 @@
+// Purpose: Root layout for the Next.js app. This file defines top-level metadata
+// (used by Next's app router) and exports the `RootLayout` component which wraps
+// page content with global providers and the site footer. Comments and JSDoc are
+// included to explain the responsibilities and exported items.
+//
+// Notes:
+// - Keep fonts and global CSS imports at the top so Next's font optimisation and
+//   global styling work correctly.
+// - `metadata` below is consumed by Next.js and should remain in the expected
+//   shape. We use the `Metadata` type from Next for better editor support.
 import type { Metadata } from "next";
 import { Geist_Mono, Instrument_Sans, Mona_Sans } from "next/font/google";
 import "./globals.css";
@@ -42,6 +52,13 @@ const appVersion = packageJson.version;
 
 const SITE_BASE = "https://plazen.org";
 
+/**
+ * Application-level metadata for Next.js.
+ *
+ * - `metadataBase` is used to compose Open Graph and other absolute URLs.
+ * - Title, description, openGraph and twitter help with SEO and social previews.
+ * - Keep this object typed as `Metadata` to catch shape errors early.
+ */
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_BASE),
   title: {
@@ -109,6 +126,22 @@ export const metadata: Metadata = {
   },
 };
 
+/**
+ * RootLayout
+ *
+ * The top-level layout used by Next's app router. Responsibilities:
+ * - Provide global CSS/fonts and apply font CSS variables
+ * - Wrap the application with `ThemeProvider` so theme state is available
+ * - Render site-wide footer and navigation elements
+ *
+ * Notes on children:
+ * - `children` is the rendered page content supplied by the app router.
+ * - This component intentionally uses a plain server/client compatible
+ *   signature; it also includes client-side components inside (ThemeProvider is a
+ *   client component), which is consistent with Next's app-router patterns.
+ *
+ * @param props.children - React node(s) representing page content
+ */
 export default function RootLayout({
   children,
 }: Readonly<{

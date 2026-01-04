@@ -1,3 +1,22 @@
+/**
+ * avatar/signed-url/route.ts
+ *
+ * Generate a signed URL for a user's avatar stored in Supabase Storage.
+ *
+ * Exports:
+ * - GET(request): returns a signed URL for the avatar at the `path` query param.
+ *
+ * Behaviour notes:
+ * - Validates the presence of a Supabase session (read from cookies).
+ * - Requires a Supabase service role key to create signed URLs; when the key is
+ *   missing the endpoint returns a 503 to indicate the feature is unavailable.
+ * - Returns 400 for missing/invalid `path`, 401 for unauthenticated requests,
+ *   and 500 for internal errors when signed URL generation fails.
+ *
+ * Implementation details:
+ * - Uses the Supabase admin client (service role) to call `storage.from(bucket).createSignedUrl`.
+ * - The signed URL TTL is configured via `SIGNED_URL_TTL_SECONDS` below (default 1 hour).
+ */
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";

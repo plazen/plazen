@@ -1,3 +1,30 @@
+/**
+ * calDavService.ts
+ *
+ * CalDAV calendar synchronisation utilities.
+ *
+ * Responsibilities:
+ * - Initialise CalDAV clients (with base-URL fallbacks) and fetch calendars/events.
+ * - Parse and normalise iCalendar data into application-friendly Date objects.
+ * - Upsert remote events into the `external_events` table and remove stale events
+ *   within the synced range when appropriate.
+ * - Emit structured log entries via an optional `onLog` callback to aid tracing
+ *   and observability from background jobs.
+ *
+ * Exports:
+ * - `syncCalendarSource(sourceId, options?)` — primary entry point to sync a single
+ *   calendar source stored in the application's `calendar_sources` table.
+ *
+ * Behavioural notes:
+ * - This module is defensive: it prefers range-based fetches where supported and
+ *   falls back to broader queries when necessary. Per-calendar failures are
+ *   logged and do not abort the whole sync process.
+ * - Credentials persisted in the DB are expected to be encrypted; callers should
+ *   ensure the decryption key is configured. This helper will call `decrypt`.
+ *
+ * Usage:
+ * - Intended for background jobs or API handlers that orchestrate sync runs.
+ */
 import { CalDAVClient } from "ts-caldav";
 import prisma from "@/lib/prisma";
 import { decrypt } from "@/lib/encryption";
@@ -38,6 +65,39 @@ type LogFn = (
   meta?: Record<string, unknown>,
 ) => void;
 
+/**
+ * Synchronise a CalDAV calendar source into the application's `external_events`.
+ *
+ * High-level behaviour:
+ * - Look up the calendar source by `sourceId` in `calendar_sources`.
+ * - Optionally validate that the source belongs to `options.expectedUserId`.
+ * - Decrypt stored credentials (if present) and attempt to initialise a CalDAV
+ *   client using a set of base-URL fallbacks.
+ * - Fetch calendars and events (prefer a supplied date range; fall back to a
+ *   sane default window), parse iCalendar dates robustly and upsert events by
+ *   UID into `external_events`.
+ * - Remove stale events that are no longer present on the remote for the synced
+ *   date range; update `last_synced_at` on the source when syncs succeed.
+ * - Emit structured logs via `options.onLog` to aid observability.
+ *
+ * Error handling and notes:
+ * - Per-calendar errors (network, auth, 404) are logged and skipped; they do
+ *   not abort the whole sync run. This keeps background jobs resilient.
+ * - The function is defensive about iCalendar date formats and will skip events
+ *   that fail date parsing to avoid crashing the sync job.
+ *
+ * @param sourceId - Identifier of the calendar source to sync (calendar_sources.id).
+ * @param options - Optional sync parameters:
+ *   @param options.onLog - (entry: { level, message, meta }) => void. If provided,
+ *                          called with structured log entries for info/warn/error.
+ *   @param options.expectedUserId - string | undefined. When provided the function
+ *                                  validates that the calendar source belongs to this user.
+ *   @param options.rangeStart - Date | undefined. Optional start of the desired fetch window.
+ *   @param options.rangeEnd - Date | undefined. Optional end of the desired fetch window.
+ *
+ * @returns Promise<void> - resolves when the sync completes (successfully or with non-fatal skips).
+ * @throws Error when the `sourceId` is not found or when a permission check fails.
+ */
 export async function syncCalendarSource(
   sourceId: string,
   options?: SyncCalendarOptions,

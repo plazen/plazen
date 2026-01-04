@@ -1,5 +1,19 @@
-// Email template utilities for Plazen
-
+/**
+ * Email template utilities for Plazen
+ *
+ * This module contains helper functions for converting lightweight markdown to
+ * HTML suitable for email, extracting plain-text fallbacks, and composing full
+ * HTML email templates. The functions are intentionally small and conservative
+ * (email clients are fragile), and include simple styling to ensure decent
+ * rendering across common clients.
+ *
+ * Exported utilities:
+ * - markdownToHtml(markdown): quick markdown -> HTML conversion (not a full MD parser)
+ * - toPlainText(content): strip markdown/HTML to safe plain text
+ * - generateEmailTemplate(options): compose a full HTML email string
+ * - generateEmailFromMarkdown(title, markdown, options): convenience builder
+ * - emailTemplates: a set of pre-built templates for common admin emails.
+ */
 import striptags from "striptags";
 
 export interface EmailTemplateOptions {
@@ -11,7 +25,38 @@ export interface EmailTemplateOptions {
   footerText?: string;
 }
 
-// Convert markdown to HTML (simple implementation)
+/**
+ * Convert a small subset of Markdown into HTML suitable for emails.
+ *
+ * This is a lightweight implementation intentionally tailored for the content we
+ * send via Plazen (headings, emphasis, code blocks, lists, links, images).
+ * It:
+ * - Escapes raw HTML first for safety
+ * - Applies simple regex-based transforms for common markdown constructs
+ * - Wraps plain paragraphs in <p> tags
+ *
+ * Limitations:
+ * - Not a full CommonMark implementation; complex edge cases may not be covered.
+ * - For complicated or user-submitted markdown, prefer a proper markdown library.
+ *
+ * @param markdown - input markdown text
+ * @returns HTML string (fragment) ready to be embedded in an email template
+ */
+/**
+ * Convert a small subset of Markdown into HTML suitable for emails.
+ *
+ * JSDoc for `markdownToHtml`:
+ * - Purpose: Provide a conservative, email-friendly markdown -> HTML converter
+ *   for content produced by the application. Not a full CommonMark parser.
+ * - Behaviour:
+ *   - Escapes raw HTML first for safety.
+ *   - Transforms common constructs (headers, emphasis, code blocks, links, images).
+ *   - Wraps plain paragraphs in <p> with simple inline styles for email rendering.
+ * - Returns: an HTML fragment (string) safe to embed inside an email body.
+ *
+ * @param markdown - input markdown text
+ * @returns HTML string (fragment) ready to be embedded in an email template
+ */
 export function markdownToHtml(markdown: string): string {
   let html = markdown;
 
@@ -40,25 +85,25 @@ export function markdownToHtml(markdown: string): string {
   // Strikethrough
   html = html.replace(/~~(.+?)~~/g, "<del>$1</del>");
 
-  // Code blocks
+  // Code blocks - preserve formatting and apply monospace styling
   html = html.replace(
     /```(\w*)\n([\s\S]*?)```/g,
     '<pre style="background-color: #1a1d24; padding: 16px; border-radius: 8px; overflow-x: auto; font-family: monospace; font-size: 14px; color: #B0B0C0; text-align: left;">$2</pre>',
   );
 
-  // Inline code
+  // Inline code styling
   html = html.replace(
     /`([^`]+)`/g,
     '<code style="background-color: #1a1d24; padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 14px; color: #2DD4BF;">$1</code>',
   );
 
-  // Links
+  // Links - convert to anchor tags with safe styling
   html = html.replace(
     /\[([^\]]+)\]\(([^)]+)\)/g,
     '<a href="$2" style="color: #2DD4BF; text-decoration: none;">$1</a>',
   );
 
-  // Images
+  // Images - embed simple responsive image markup
   html = html.replace(
     /!\[([^\]]*)\]\(([^)]+)\)/g,
     '<img src="$2" alt="$1" style="max-width: 100%; height: auto; border-radius: 8px;" />',
@@ -70,19 +115,19 @@ export function markdownToHtml(markdown: string): string {
     '<hr style="border: none; border-top: 1px solid rgba(255, 255, 255, 0.1); margin: 24px 0;" />',
   );
 
-  // Blockquotes
+  // Blockquotes - simple styling
   html = html.replace(
     /^>\s+(.*)$/gm,
     '<blockquote style="border-left: 4px solid #2DD4BF; margin: 16px 0; padding-left: 16px; color: #B0B0C0; font-style: italic;">$1</blockquote>',
   );
 
-  // Unordered lists
+  // Unordered lists -> <li> entries
   html = html.replace(
     /^[\*\-]\s+(.*)$/gm,
     '<li style="color: #B0B0C0; margin-bottom: 8px;">$1</li>',
   );
 
-  // Ordered lists
+  // Ordered lists -> <li> entries
   html = html.replace(
     /^\d+\.\s+(.*)$/gm,
     '<li style="color: #B0B0C0; margin-bottom: 8px;">$1</li>',
@@ -94,7 +139,7 @@ export function markdownToHtml(markdown: string): string {
     '<ul style="margin: 16px 0; padding-left: 24px; text-align: left;">$&</ul>',
   );
 
-  // Paragraphs - wrap text blocks that aren't already wrapped
+  // Paragraph wrapping - only wrap lines that are not already HTML
   const lines = html.split("\n");
   const processedLines: string[] = [];
 
@@ -121,17 +166,41 @@ export function markdownToHtml(markdown: string): string {
 
   html = processedLines.join("\n");
 
-  // Clean up empty paragraphs
+  // Remove any accidental empty paragraphs
   html = html.replace(/<p style="[^"]*"><\/p>/g, "");
 
   return html;
 }
 
-// Strip HTML and markdown to get plain text
+/**
+ * Convert an HTML/Markdown string to plain text.
+ *
+ * This is useful for generating the plain-text part of an email or for
+ * search/indexing. It attempts to remove markdown formatting and strip HTML
+ * tags safely using a robust library (striptags).
+ *
+ * @param content - input string containing markdown and/or HTML
+ * @returns plain-text representation
+ */
+/**
+ * Convert an HTML/Markdown string to plain text.
+ *
+ * JSDoc for `toPlainText`:
+ * - Purpose: Produce a plain-text fallback suitable for the text part of
+ *   multipart emails or for indexing/searching. It strips markdown decorations
+ *   and HTML tags conservatively.
+ * - Behaviour:
+ *   - Removes common markdown formatting while preserving readable content.
+ *   - Strips HTML tags using a robust utility (`striptags`).
+ *   - Normalizes whitespace and trims result.
+ *
+ * @param content - input string containing markdown and/or HTML
+ * @returns plain-text representation
+ */
 export function toPlainText(content: string): string {
   let text = content;
 
-  // Remove markdown formatting
+  // Remove common markdown decorations while preserving text
   text = text.replace(/\*\*\*(.+?)\*\*\*/g, "$1");
   text = text.replace(/\*\*(.+?)\*\*/g, "$1");
   text = text.replace(/\*(.+?)\*/g, "$1");
@@ -149,17 +218,22 @@ export function toPlainText(content: string): string {
   text = text.replace(/^\d+\.\s+/gm, "");
   text = text.replace(/^---$/gm, "");
 
-  // Remove HTML tags safely using a well-tested library
+  // Remove HTML tags in a safe way
   text = striptags(text);
 
-  // Clean up whitespace
+  // Normalize whitespace and trim
   text = text.replace(/\n\s*\n/g, "\n\n");
   text = text.trim();
 
   return text;
 }
 
-// Escape HTML entities
+/**
+ * Escape a string for safe insertion into HTML attributes or text nodes.
+ *
+ * @param text - input text
+ * @returns escaped HTML-safe string
+ */
 function escapeHtml(text: string): string {
   const htmlEntities: Record<string, string> = {
     "&": "&amp;",
@@ -171,7 +245,30 @@ function escapeHtml(text: string): string {
   return text.replace(/[&<>"']/g, (char) => htmlEntities[char] || char);
 }
 
-// Generate the full HTML email template
+/**
+ * Compose the full HTML email template used by the Plazen site.
+ *
+ * The function accepts a small set of options and returns a complete HTML
+ * document string. It is safe to call from server-side code that needs to send
+ * email via SMTP.
+ *
+ * @param options - email template options
+ * @returns HTML document string
+ */
+/**
+ * Compose the full HTML email template used by the Plazen site.
+ *
+ * JSDoc for `generateEmailTemplate`:
+ * - Purpose: Produce a complete, self-contained HTML document suitable to be
+ *   sent as the HTML part of an email. The function adds basic layout,
+ *   inline styles, and optional call-to-action button and footer.
+ * - Notes:
+ *   - Keeps styles inline and conservative for maximum client compatibility.
+ *   - Escapes user-provided values where necessary to avoid injection.
+ *
+ * @param options - email template options (title, preheader, body, button, footer)
+ * @returns HTML document string
+ */
 export function generateEmailTemplate(options: EmailTemplateOptions): string {
   const {
     title,
@@ -293,7 +390,32 @@ export function generateEmailTemplate(options: EmailTemplateOptions): string {
 </html>`;
 }
 
-// Generate email from markdown content
+/**
+ * Helper to generate both HTML and plain-text content from markdown input.
+ *
+ * Useful when sending multipart emails where a plain-text fallback is required.
+ *
+ * @param title - email title (used in text fallback and <title> in HTML)
+ * @param markdownContent - markdown content to render
+ * @param options - optional template configuration (preheader, button, footer)
+ * @returns object with { html, text } for email sending
+ */
+/**
+ * Helper to generate both HTML and plain-text content from markdown input.
+ *
+ * JSDoc for `generateEmailFromMarkdown`:
+ * - Purpose: Convenience builder that converts markdown into both HTML and a
+ *   plain-text fallback, and wraps the HTML into the full email template.
+ * - Behaviour:
+ *   - Uses `markdownToHtml` to render HTML fragment.
+ *   - Uses `toPlainText` to produce the text fallback.
+ *   - Composes the final HTML via `generateEmailTemplate`.
+ *
+ * @param title - email title (used in HTML <title> and in the text fallback)
+ * @param markdownContent - markdown content to render
+ * @param options - optional template configuration (preheader, button, footer)
+ * @returns object with { html, text } ready to be used in multipart emails
+ */
 export function generateEmailFromMarkdown(
   title: string,
   markdownContent: string,
@@ -329,7 +451,21 @@ ${textBody}
   return { html, text };
 }
 
-// Pre-built email templates for admin use (not auth-related)
+/**
+ * Pre-built email templates for common administrative actions.
+ *
+ * These are convenience factories that produce an `{ html, text }` payload via
+ * `generateEmailFromMarkdown`. They are intentionally simple and non-authoring.
+ */
+/**
+ * Pre-built email templates for common administrative actions.
+ *
+ * JSDoc for `emailTemplates`:
+ * - Purpose: Small set of convenience factories producing `{ html, text }`
+ *   payloads via `generateEmailFromMarkdown` for common communication types
+ *   (newsletter, announcement, feature update, maintenance notice).
+ * - Usage: import and call the desired factory to obtain ready-to-send payloads.
+ */
 export const emailTemplates = {
   newsletter: (content: string) =>
     generateEmailFromMarkdown("Plazen Newsletter", content, {
