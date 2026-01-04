@@ -1,3 +1,32 @@
+/*
+ * API: /api/tasks
+ *
+ * Endpoints:
+ * - GET /api/tasks?date=YYYY-MM-DD&timezoneOffset=<minutes>
+ *   - Returns tasks and external events for the authenticated user.
+ *   - If `date` is provided, the handler may auto-generate routine tasks for that date.
+ *   - Supports filtering by date and timezone offset to adjust serialized timestamps.
+ *
+ * - POST /api/tasks
+ *   - Create a new task. Body expects title and scheduling info. For non-time-sensitive
+ *     tasks the server will attempt to select a free timeslot based on the user's timetable
+ *     and existing tasks/events.
+ *
+ * - PATCH /api/tasks
+ *   - Update an existing task (mark completed, reschedule, or update title). Titles are
+ *     encrypted at rest; when updating the title the server will encrypt it before saving.
+ *
+ * - DELETE /api/tasks
+ *   - Delete a task owned by the authenticated user. External events are read-only.
+ *
+ * Authentication:
+ * - All methods require an authenticated Supabase session validated server-side.
+ *
+ * Notes:
+ * - Titles are stored encrypted and decrypted for responses.
+ * - The handlers use Prisma for DB access and employ careful timezone normalization to
+ *   avoid accidental shifts when working with local date strings.
+ */
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";

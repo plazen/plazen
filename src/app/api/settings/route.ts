@@ -1,3 +1,30 @@
+/*
+ * API: /api/settings
+ *
+ * Endpoints supported:
+ * - GET  /api/settings
+ *   - Purpose: Return the authenticated user's settings row (creates a default
+ *     settings row if one does not exist).
+ *   - Auth: Requires an active Supabase session (server-side cookie via SSR client).
+ *   - Response: 200 with the settings object on success, 401 when unauthenticated,
+ *     500 on server error.
+ *
+ * - PATCH /api/settings
+ *   - Purpose: Update user settings (partial updates supported).
+ *   - Auth: Requires an active Supabase session.
+ *   - Request body: any subset of:
+ *       { timetable_start?, timetable_end?, show_time_needle?, theme?, telegram_id?, notifications? }
+ *   - Behavior: Only provided fields will be updated; `updated_at` will be set to now.
+ *   - Response: 200 with the updated settings object on success, 401 when unauthenticated,
+ *     400 for invalid input, 500 on server error.
+ *
+ * Notes:
+ * - Handlers use the Supabase SSR client wired to Next's cookie store so authentication
+ *   is validated server-side.
+ * - This route is marked `force-dynamic` elsewhere to ensure fresh DB reads rather than
+ *   serving cached static content.
+ * - Errors are returned as JSON `{ error: string }` with appropriate HTTP status codes.
+ */
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
@@ -22,7 +49,7 @@ export async function GET() {
           cookieStore.delete({ name, ...options });
         },
       },
-    }
+    },
   );
 
   const {
@@ -58,7 +85,7 @@ export async function GET() {
     console.error("Error fetching settings:", error);
     return NextResponse.json(
       { error: "Failed to fetch settings" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -68,7 +95,7 @@ export async function PATCH(request: Request) {
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { cookies: { get: (name: string) => cookieStore.get(name)?.value } }
+    { cookies: { get: (name: string) => cookieStore.get(name)?.value } },
   );
 
   const {
@@ -124,7 +151,7 @@ export async function PATCH(request: Request) {
     console.error("Error updating settings:", error);
     return NextResponse.json(
       { error: "Failed to update settings" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

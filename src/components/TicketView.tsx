@@ -10,6 +10,13 @@ import { cn } from "@/lib/utils";
 import LoadingSpinner from "@/app/components/LoadingSpinner";
 import { createBrowserClient } from "@supabase/ssr";
 
+/**
+ * Types used by the TicketView component.
+ *
+ * These mirror the shape of data returned by the API endpoints the component
+ * consumes. Keeping explicit types here improves editor support and helps
+ * document expected fields.
+ */
 type User = {
   id: string;
   email: string | null;
@@ -55,7 +62,21 @@ interface TicketViewProps {
   isAdmin: boolean;
 }
 
+/**
+ * TicketView
+ *
+ * Display a single support ticket with messages and administrative controls.
+ *
+ * Responsibilities:
+ * - Load ticket data (messages, labels, metadata) from server APIs.
+ * - Allow replying to tickets (with optimistic UI update).
+ * - Provide admin controls (status, labels, delete) when `isAdmin` is true.
+ *
+ * The component is a client component because it performs client-side fetches
+ * and interacts with browser APIs (e.g. confirm, local DOM for avatars).
+ */
 export function TicketView({ ticketId, isAdmin }: TicketViewProps) {
+  // Local UI/data state ------------------------------------------------------
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [allLabels, setAllLabels] = useState<AllLabels[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -63,20 +84,26 @@ export function TicketView({ ticketId, isAdmin }: TicketViewProps) {
   const [isInternal, setIsInternal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Map of userId -> signed avatar URL (fetched from server)
   const [avatarUrls, setAvatarUrls] = useState<{ [userId: string]: string }>(
     {},
   );
 
+  // Supabase client (browser) used to read the current session and identify user.
+  // We create a browser client here so the component can detect the currently
+  // authenticated user's ID for message attribution.
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
   );
   const router = useRouter();
 
+  // Initial data fetch: ticket + (if admin) labels, and session lookup.
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {
+        // Retrieve session to determine current user id (for "You" labeling)
         const {
           data: { session },
         } = await supabase.auth.getSession();
@@ -84,11 +111,14 @@ export function TicketView({ ticketId, isAdmin }: TicketViewProps) {
           setCurrentUserId(session.user.id);
         }
 
+        // Fetch ticket data (messages, labels, metadata)
         const ticketRes = await fetch(`/api/support/tickets/${ticketId}`);
         if (!ticketRes.ok) throw new Error("Failed to fetch ticket");
         const ticketData = await ticketRes.json();
         setTicket(ticketData);
 
+        // If the viewer is an admin, also fetch the master list of labels so we
+        // can present label-adding UI.
         if (isAdmin) {
           const labelsRes = await fetch("/api/support/labels");
           if (!labelsRes.ok) throw new Error("Failed to fetch labels");
@@ -96,22 +126,31 @@ export function TicketView({ ticketId, isAdmin }: TicketViewProps) {
           setAllLabels(labelsData);
         }
       } catch (err) {
+        // Store a user-friendly error message for display
         setError(err instanceof Error ? err.message : "An error occurred");
       } finally {
         setLoading(false);
       }
     };
     fetchData();
+    // Note: supabase.auth is referenced for session retrieval but we only rely
+    // on the current session at mount. Keeping it in the deps prevents stale
+    // references if the supabase client changes.
   }, [ticketId, isAdmin, supabase.auth]);
 
-  // Fetch signed avatar URLs for all users with avatar_path
+  // Fetch signed avatar URLs for all unique users present on the ticket (author
+  // + message authors). Signed URLs are requested from the backend which may
+  // proxy/secure access to a storage provider.
   useEffect(() => {
     const fetchAvatars = async () => {
       if (!ticket) return;
+      // Build a list of users to request avatar URLs for (deduplicated).
       const users = [ticket.users, ...ticket.messages.map((msg) => msg.user)];
       const uniqueUsers = Object.values(
         users.reduce(
           (acc, user) => {
+            // Only include users that have an avatar_path set and avoid adding
+            // the same user multiple times by keying by user.id
             if (user.avatar_path && !acc[user.id]) acc[user.id] = user;
             return acc;
           },
@@ -120,6 +159,8 @@ export function TicketView({ ticketId, isAdmin }: TicketViewProps) {
       );
 
       const urlMap: { [userId: string]: string } = {};
+      // Fetch signed URLs in parallel. Ignore failures for individual users so
+      // the rest of the UI can still render.
       await Promise.all(
         uniqueUsers.map(async (user) => {
           try {
@@ -128,7 +169,9 @@ export function TicketView({ ticketId, isAdmin }: TicketViewProps) {
             );
             const data = await res.json();
             if (data.url) urlMap[user.id] = data.url;
-          } catch {}
+          } catch {
+            // Swallow individual avatar errors; missing avatars fall back to initials.
+          }
         }),
       );
       setAvatarUrls(urlMap);
@@ -136,6 +179,7 @@ export function TicketView({ ticketId, isAdmin }: TicketViewProps) {
     fetchAvatars();
   }, [ticket]);
 
+  // Helper to refresh the ticket from the server (used after mutations)
   const refreshTicket = async () => {
     const res = await fetch(`/api/support/tickets/${ticketId}`);
     if (res.ok) {
@@ -144,10 +188,18 @@ export function TicketView({ ticketId, isAdmin }: TicketViewProps) {
     }
   };
 
+  /**
+   * handleSubmit
+   *
+   * Submit a new message for the current ticket. Performs a light optimistic
+   * update so the new message appears instantly while the network request
+   * completes; afterwards we refresh the ticket to reflect server state.
+   */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || !ticket || !currentUserId) return;
 
+    // Build an optimistic message to show immediately in the UI.
     const optimisticMessage: Message = {
       id: Math.random().toString(),
       message: newMessage,
@@ -159,6 +211,7 @@ export function TicketView({ ticketId, isAdmin }: TicketViewProps) {
       },
     };
 
+    // Append optimistic message to local state
     setTicket((prevTicket) => {
       if (!prevTicket) return null;
       return {
@@ -167,9 +220,11 @@ export function TicketView({ ticketId, isAdmin }: TicketViewProps) {
       };
     });
 
+    // Clear input immediately for better UX
     setNewMessage("");
     setIsInternal(false);
 
+    // POST the message to the backend
     await fetch(`/api/support/tickets/${ticket.id}`, {
       method: "POST",
       body: JSON.stringify({
@@ -178,9 +233,11 @@ export function TicketView({ ticketId, isAdmin }: TicketViewProps) {
       }),
     });
 
+    // Ensure the authoritative server state is loaded
     await refreshTicket();
   };
 
+  // Handle status changes (admin only)
   const handleStatusChange = async (
     e: React.ChangeEvent<HTMLSelectElement>,
   ) => {
@@ -193,6 +250,7 @@ export function TicketView({ ticketId, isAdmin }: TicketViewProps) {
     await refreshTicket();
   };
 
+  // Add a label to the ticket (admin)
   const handleAddLabel = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const labelId = e.target.value;
     if (!labelId || !ticket) return;
@@ -204,6 +262,7 @@ export function TicketView({ ticketId, isAdmin }: TicketViewProps) {
     await refreshTicket();
   };
 
+  // Remove a label from the ticket (admin)
   const handleRemoveLabel = async (labelId: string) => {
     if (!ticket) return;
     await fetch(`/api/support/tickets/${ticket.id}/labels?labelId=${labelId}`, {
@@ -212,6 +271,7 @@ export function TicketView({ ticketId, isAdmin }: TicketViewProps) {
     await refreshTicket();
   };
 
+  // Delete ticket (admin only) with confirmation prompt
   const handleDeleteTicket = async () => {
     if (!ticket) return;
     // Confirm destructive action

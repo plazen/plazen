@@ -1,3 +1,21 @@
+/**
+ * githubBot.ts
+ *
+ * Utilities for lightweight GitHub Releases automation used by Plazen. This
+ * module encapsulates a few focused operations against the GitHub REST API:
+ *
+ * - lookup releases by tag
+ * - append a release notes URL into a release body if missing
+ * - add a set of reactions to a release to increase discoverability/visibility
+ *
+ * Important:
+ * - Requires `GITHUB_BOT_TOKEN` environment variable for authentication.
+ * - `GITHUB_OWNER` and `GITHUB_REPO` may be overridden via environment values,
+ *   otherwise they default to `plazen`.
+ *
+ * The functions are intentionally simple wrappers around fetch-based calls and
+ * return structured results or throw informative errors when operations fail.
+ */
 type Release = {
   id: number;
   tag_name: string;
@@ -106,6 +124,36 @@ async function addReactionToRelease(
   });
 }
 
+/**
+ * Add all configured reactions to a given release.
+ *
+ * Description:
+ * - Attempts to add each reaction listed in `REACTIONS` to the specified
+ *   GitHub release. Each reaction attempt is performed independently and the
+ *   function aggregates results so callers can observe which reactions
+ *   succeeded or failed.
+ *
+ * Behavioural notes:
+ * - Uses the GitHub Reactions API which requires a special Accept header.
+ * - If the `GITHUB_BOT_TOKEN` environment variable is not present this
+ *   function throws immediately to indicate missing credentials.
+ * - The function returns a summary rather than throwing on individual reaction
+ *   failures so it is suitable for best-effort automation tasks.
+ *
+ * @param releaseId - numeric ID of the GitHub release to react to
+ * @returns An object with the shape:
+ *   {
+ *     success: string[]; // reaction names that were successfully added
+ *     failed: Array<{ reaction: string; reason: string }>; // failed attempts
+ *     raw: unknown[]; // the raw Promise.allSettled results for debugging
+ *   }
+ *
+ * @example
+ * const summary = await addAllReactionsToRelease(123456);
+ * console.log('Added reactions:', summary.success);
+ *
+ * @throws Error if `GITHUB_BOT_TOKEN` is not configured
+ */
 export async function addAllReactionsToRelease(releaseId: number) {
   if (!GITHUB_TOKEN) {
     throw new Error("GITHUB_BOT_TOKEN is not configured.");
@@ -139,6 +187,36 @@ export async function addAllReactionsToRelease(releaseId: number) {
   return summary;
 }
 
+/**
+ * Synchronise a GitHub release by appending a release-notes URL and adding reactions.
+ *
+ * Description:
+ * - Fetches the release matching `releaseTag`.
+ * - If `notesUrl` is not present in the release body, prepends a short
+ *   \"See full release notes\" markdown link and updates the release via PATCH.
+ * - Attempts to add a predefined set of reactions to the release and returns
+ *   both the updated release object and a summary of reaction attempts.
+ *
+ * Behavioural notes:
+ * - The function will throw if the `GITHUB_BOT_TOKEN` environment variable is
+ *   not available since authenticated API calls are required.
+ * - Reaction additions are best-effort; failures to add reactions are
+ *   captured in the `reactions` summary rather than causing the whole call to fail.
+ *
+ * @param releaseTag - the git tag name for the release (e.g. \"v1.2.3\")
+ * @param notesUrl - publicly accessible URL pointing to the full release notes
+ * @returns Promise resolving to:
+ *   {
+ *     release: Release; // the updated release object from GitHub
+ *     reactions: unknown; // summary of reaction attempts (see addAllReactionsToRelease)
+ *   }
+ *
+ * @example
+ * const result = await syncReleaseWithNotes('v1.0.0', 'https://plazen.org/release-notes/abc123');
+ * console.log(result.release.html_url, result.reactions);
+ *
+ * @throws Error when `GITHUB_BOT_TOKEN` is missing
+ */
 export async function syncReleaseWithNotes(
   releaseTag: string,
   notesUrl: string,
@@ -167,6 +245,28 @@ export async function syncReleaseWithNotes(
   };
 }
 
+/**
+ * Attempt to synchronise a release and return an explicit error object on failure.
+ *
+ * Description:
+ * - Convenience wrapper around `syncReleaseWithNotes` that captures thrown
+ *   errors, logs them, and returns a normalized `{ error: string }` object
+ *   instead of propagating exceptions. Useful for background tasks where a
+ *   failure should be observed but not crash the orchestration.
+ *
+ * @param releaseTag - the release tag to sync (e.g. \"v2.0.0\")
+ * @param notesUrl - URL to the full release notes
+ * @returns Promise resolving to either the successful result of `syncReleaseWithNotes`
+ *          or an object `{ error: string }` describing the failure.
+ *
+ * @example
+ * const outcome = await trySyncReleaseWithNotes('v1.2.3', 'https://plazen.org/notes/xyz');
+ * if ('error' in outcome) {
+ *   console.error('Sync failed:', outcome.error);
+ * } else {
+ *   console.log('Sync succeeded:', outcome.release.html_url);
+ * }
+ */
 export async function trySyncReleaseWithNotes(
   releaseTag: string,
   notesUrl: string,

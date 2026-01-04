@@ -1,3 +1,40 @@
+/*
+ * API: POST /api/calendars/[id]/sync
+ *
+ * Purpose:
+ * - Trigger a manual sync for a specific calendar source.
+ *
+ * Behavior:
+ * - Validates the Supabase-authenticated user server-side.
+ * - Confirms the calendar source exists and belongs to the authenticated user.
+ * - Runs a sync operation:
+ *   - Uses Google sync flow when the source `type` is "google".
+ *   - Uses the CalDAV sync flow for other source types.
+ * - Supports optional `debug` query parameter (debug=1 or debug=true). When present,
+ *   the handler collects SyncLogEntry objects produced during the sync and returns
+ *   them in the response under the `debug` key to aid troubleshooting.
+ *
+ * Authentication & Authorization:
+ * - Requires an active Supabase session (via SSR client + cookies).
+ * - Returns 401 if the request is not authenticated.
+ * - Returns 403 if the source exists but does not belong to the authenticated user.
+ *
+ * Request:
+ * - Path param: `id` — calendar source id to sync.
+ * - Optional query: `debug=1|true` — include sync debug log entries in the response.
+ *
+ * Responses:
+ * - 200: { status: "ok" } (may include debug array)
+ * - 401: { error: "Unauthorized" }
+ * - 403: { error: "Forbidden" }
+ * - 404: { error: "Source not found" }
+ * - 500: { error: "Failed to run manual calendar sync" } (or other error message)
+ *
+ * Notes:
+ * - The handler logs useful context for operations and maps sync errors to appropriate
+ *   HTTP statuses where possible. Initial sync details are best-effort — heavy sync
+ *   operations should be performed asynchronously when necessary.
+ */
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";

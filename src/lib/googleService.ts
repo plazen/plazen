@@ -1,14 +1,82 @@
+/**
+ * googleService.ts
+ *
+ * A1-style module header and JSDoc: Google Calendar sync helpers.
+ *
+ * Purpose
+ * -------
+ * Provide focused utilities to synchronise Google Calendar sources into the
+ * application's `external_events` table. The module handles token refresh,
+ * calendar enumeration, event fetching within a sensible time range, upserting
+ * remote events into the DB, and removing stale events. Structured logs may be
+ * emitted through an optional callback to aid observability.
+ *
+ * Exported functions (high level)
+ * -------------------------------
+ * - `syncGoogleSource(sourceId, options?)`:
+ *     Orchestrates a sync for a single `calendar_sources` entry backed by Google
+ *     Calendar credentials. It will:
+ *       - decrypt stored tokens,
+ *       - refresh access tokens when needed,
+ *       - list calendars, fetch events in the effective range,
+ *       - upsert events into `external_events`, and
+ *       - delete stale events limited to the synced date range when applicable.
+ *
+ * - (internal) `refreshAccessToken(refreshToken, log)`:
+ *     Exchanges a Google OAuth2 refresh token for a fresh access token using
+ *     Google's token endpoint. Returns the access token string or `null` on failure.
+ *
+ * Behaviour and notes
+ * -------------------
+ * - Defensive: the sync attempts to continue across calendars if a single
+ *   calendar fails. Authentication failures will attempt a token refresh when
+ *   possible before skipping a calendar.
+ * - Default sync window: when `rangeStart`/`rangeEnd` are not supplied a
+ *   pragmatic default (upcoming week) is used to limit fetch sizes and stale-deletes.
+ * - Tokens in the DB are expected to be encrypted; `decrypt` is used to obtain
+ *   usable tokens. The module will not throw for missing tokens but will log and return.
+ *
+ * Environment and prerequisites
+ * -----------------------------
+ * - GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are required for refresh token exchange.
+ * - The database access is performed via `prisma` and requires a configured
+ *   Prisma client (see `@/lib/prisma`).
+ *
+ * Usage example
+ * -------------
+ * import { syncGoogleSource } from "@/lib/googleService";
+ * await syncGoogleSource("source-id-123", { onLog: (entry) => console.log(entry) });
+ *
+ * Implementation note
+ * -------------------
+ * - This file focuses on clarity and predictable behaviour rather than exhaustive
+ *   protocol coverage. For large-scale syncing consider batching, rate-limiting,
+ *   and background retry strategies external to this helper.
+ */
 import prisma from "@/lib/prisma";
 import { decrypt } from "@/lib/encryption";
 
+/** Log level used by sync helpers. */
 type LogLevel = "info" | "warn" | "error";
 
+/**
+ * Structured log entry emitted by the sync process.
+ * - `level`: severity of the log ('info'|'warn'|'error')
+ * - `message`: human-readable message
+ * - `meta`: optional metadata useful for debugging (IDs, URLs, status codes)
+ */
 export type SyncLogEntry = {
   level: LogLevel;
   message: string;
   meta?: Record<string, unknown>;
 };
 
+/**
+ * Options for calendar synchronisation.
+ * - `onLog`: optional callback invoked with `SyncLogEntry` objects
+ * - `expectedUserId`: optional guard to ensure the source belongs to this user
+ * - `rangeStart` / `rangeEnd`: optional date window to limit fetched events
+ */
 export type SyncCalendarOptions = {
   onLog?: (entry: SyncLogEntry) => void;
   expectedUserId?: string;
@@ -16,6 +84,10 @@ export type SyncCalendarOptions = {
   rangeEnd?: Date;
 };
 
+/**
+ * Internal logger function shape used throughout this module.
+ * The `log` function accepts a level, message and optional meta object.
+ */
 type LogFn = (
   level: LogLevel,
   message: string,

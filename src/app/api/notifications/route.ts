@@ -1,3 +1,27 @@
+/*
+ * API: GET /api/notifications
+ *
+ * Purpose:
+ * - Return active notifications for the application. The endpoint is intended for
+ *   client-side consumption to show site-wide messages to authenticated users.
+ *
+ * Authentication:
+ * - This handler validates a Supabase session via the SSR client and Next cookie
+ *   helpers. It returns HTTP 401 when no active session is present.
+ *
+ * Behavior:
+ * - Queries `notifications` for rows where `show` is true and returns them ordered
+ *   by `created_at` descending.
+ *
+ * Response:
+ * - 200: JSON array of notifications (when successful).
+ * - 401: { error: "Unauthorized" } when no valid session is present.
+ * - 500: { error: "Failed to fetch notifications" } on unexpected server errors.
+ *
+ * Notes:
+ * - The route is marked `force-dynamic` to always fetch fresh data from the DB.
+ * - If you want notifications to be public (no auth), remove the session check below.
+ */
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
@@ -16,7 +40,7 @@ export async function GET() {
           return cookieStore.get(name)?.value;
         },
       },
-    }
+    },
   );
 
   const {
@@ -44,7 +68,7 @@ export async function GET() {
     console.error("Error fetching notifications:", error);
     return NextResponse.json(
       { error: "Failed to fetch notifications" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

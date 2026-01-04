@@ -1,3 +1,34 @@
+/*
+ * API: /api/routine-tasks
+ *
+ * Endpoints:
+ * - GET  /api/routine-tasks
+ *   - Purpose: Return the authenticated user's routine tasks (decrypted titles).
+ *   - Auth: Requires a valid Supabase session cookie. Returns 401 when unauthenticated.
+ *   - Behavior: Fetches routine tasks for the session user, decrypts stored titles
+ *     and returns them ordered by creation date (descending).
+ *
+ * - POST /api/routine-tasks
+ *   - Purpose: Create a new routine task for the authenticated user.
+ *   - Auth: Requires a valid Supabase session cookie. Returns 401 when unauthenticated.
+ *   - Request body (JSON): { title, description?, duration_minutes }
+ *     - `title` and `duration_minutes` are required.
+ *   - Behavior:
+ *     - Enforces a free-plan limit (1 task) unless the user has a Pro subscription.
+ *     - Encrypts the task title before persisting and returns the created task with
+ *       the title decrypted in the response.
+ *   - Responses:
+ *     - 201: Created task JSON with decrypted title.
+ *     - 400: Validation errors (missing fields).
+ *     - 403: Forbidden (quota exceeded for free users).
+ *     - 500: Internal server error.
+ *
+ * Notes:
+ * - Handlers use Supabase SSR client wired to Next's cookie store to validate sessions.
+ * - Titles are encrypted/decrypted using the project's encryption helpers to keep
+ *   sensitive data protected at rest.
+ * - The route is marked `force-dynamic` to ensure fresh DB reads on each request.
+ */
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
@@ -23,7 +54,7 @@ export async function GET() {
           cookieStore.delete({ name, ...options });
         },
       },
-    }
+    },
   );
 
   const {
@@ -54,7 +85,7 @@ export async function GET() {
     console.error("Error fetching routine tasks:", error);
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -64,7 +95,7 @@ export async function POST(request: Request) {
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { cookies: { get: (name: string) => cookieStore.get(name)?.value } }
+    { cookies: { get: (name: string) => cookieStore.get(name)?.value } },
   );
 
   const {
@@ -82,7 +113,7 @@ export async function POST(request: Request) {
     if (!title || !duration_minutes) {
       return NextResponse.json(
         { error: "Title and duration are required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -102,7 +133,7 @@ export async function POST(request: Request) {
             error:
               "Free plan allows one routine task. Upgrade to Pro to add more.",
           },
-          { status: 403 }
+          { status: 403 },
         );
       }
     }
@@ -128,7 +159,7 @@ export async function POST(request: Request) {
     console.error("Error creating routine task:", error);
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -1,3 +1,42 @@
+/*
+ * API: /api/calendars
+ *
+ * This file exposes the server-side handlers for managing a user's calendar sources.
+ * It relies on Supabase session cookies to authenticate the logged-in user, and uses
+ * Prisma for database access. Credentials (username/access token and password/refresh
+ * token) are stored encrypted via the project's encryption helpers.
+ *
+ * Endpoints:
+ * - GET /api/calendars
+ *   - Auth: Requires an active Supabase session.
+ *   - Returns: List of calendar sources belonging to the authenticated user.
+ *     Credentials (password) are intentionally nulled in the response and any stored
+ *     usernames are returned decrypted for safe display.
+ *   - Behavior: Performs a lookup in `calendar_sources` filtered by the session user.
+ *
+ * - POST /api/calendars
+ *   - Auth: Requires an active Supabase session.
+ *   - Accepts JSON body: { name, url, username, password, color, type }
+ *     - `type` may be "caldav" (default) or "google".
+ *     - Credentials (username/password) will be encrypted before saving.
+ *   - Query params:
+ *     - `debug=1|true` (optional) — if present, the handler will collect debug log
+ *       entries produced during the initial sync and include them in the JSON response.
+ *   - Behavior:
+ *     - Creates a new `calendar_sources` row for the user with encrypted credentials.
+ *     - Attempts an initial sync:
+ *       - For `type: "google"`, triggers Google-specific sync flow.
+ *       - For other types, triggers CalDAV sync flow.
+ *     - Returns the created source with `password: null` and, when requested,
+ *       a `debug` array of SyncLogEntry objects.
+ *
+ * Notes:
+ * - The handlers below expect and use the Supabase SSR client wired to Next's cookie
+ *   storage helpers so authentication is validated server-side.
+ * - Initial sync is best-effort: sync failures are logged but do not block the creation
+ *   of the calendar source.
+ * - Error responses use NextResponse with appropriate HTTP status codes.
+ */
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";

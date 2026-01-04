@@ -1,9 +1,39 @@
+/**
+ * socials.ts
+ *
+ * Utilities to publish release announcements to social platforms (Mastodon, Threads).
+ *
+ * Exports:
+ * - publishToSocials(note): best-effort publisher that attempts to post a release
+ *   announcement to configured social platforms. Failures for individual platforms
+ *   are logged and do not throw from the batch publisher.
+ *
+ * Behaviour and notes:
+ * - Reads credentials from environment variables:
+ *     - Mastodon: MASTODON_INSTANCE_URL, MASTODON_ACCESS_TOKEN
+ *     - Threads: THREADS_USER_ID, THREADS_ACCESS_TOKEN
+ * - Posts are performed via simple HTTP requests (fetch). These helpers are
+ *   intentionally small and synchronous-like; they are suitable for background
+ *   tasks or CI announcements but not for rate-sensitive production workloads.
+ */
+
+import crypto from "crypto";
+
 interface ReleaseNoteDetails {
   id: string;
   version: string;
   topic: string;
 }
 
+/**
+ * Publish a release note to supported social platforms.
+ *
+ * This function formats a short release message and attempts to publish it to
+ * Mastodon and Threads in parallel. Each platform is best-effort — failures are
+ * logged per-platform and do not prevent the function from returning.
+ *
+ * @param note - release metadata used to format the outgoing message
+ */
 export async function publishToSocials(note: ReleaseNoteDetails) {
   const message = formatReleaseMessage(note);
 
@@ -22,6 +52,12 @@ export async function publishToSocials(note: ReleaseNoteDetails) {
   });
 }
 
+/**
+ * Create the textual message to post for a release.
+ *
+ * The message contains a short summary, links to release notes and the GitHub
+ * release page, and a set of tags used by Plazen.
+ */
 function formatReleaseMessage(note: ReleaseNoteDetails): string {
   return `✨ Version ${note.version} released!
 
@@ -34,6 +70,17 @@ Have a good day! ❤️
 
 #plazen #opensource #release #plazenorg`;
 }
+
+/**
+ * publishToMastodon
+ *
+ * Post a status update to a Mastodon instance using the /api/v1/statuses endpoint.
+ *
+ * - Requires MASTODON_INSTANCE_URL and MASTODON_ACCESS_TOKEN to be set.
+ * - Uses an Idempotency-Key header to reduce duplicate posts in retry scenarios.
+ *
+ * Throws on HTTP error to allow the caller to log the failure.
+ */
 async function publishToMastodon(text: string) {
   const instanceUrl = process.env.MASTODON_INSTANCE_URL;
   const accessToken = process.env.MASTODON_ACCESS_TOKEN;
@@ -55,6 +102,17 @@ async function publishToMastodon(text: string) {
   }
 }
 
+/**
+ * publishToThreads
+ *
+ * Publish a simple text-only thread via the Threads API container/publish flow.
+ *
+ * - Requires THREADS_USER_ID and THREADS_ACCESS_TOKEN environment variables.
+ * - The flow first creates a container (POST /threads) then polls until the
+ *   container is ready, and finally publishes via threads_publish.
+ *
+ * Throws on HTTP error to allow the caller to log the failure.
+ */
 async function publishToThreads(text: string) {
   const userId = process.env.THREADS_USER_ID;
   const accessToken = process.env.THREADS_ACCESS_TOKEN;
@@ -109,6 +167,15 @@ async function publishToThreads(text: string) {
   console.log("Threads post published successfully.");
 }
 
+/**
+ * waitForContainer
+ *
+ * Poll the Threads container status endpoint until processing has finished or
+ * an error/timeout occurs.
+ *
+ * - Retries up to `maxAttempts` with a fixed delay.
+ * - Throws if the container enters an ERROR state or if the timeout is reached.
+ */
 async function waitForContainer(creationId: string, accessToken: string) {
   let attempts = 0;
   const maxAttempts = 12;

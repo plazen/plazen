@@ -1,3 +1,27 @@
+/*
+ * API: /api/subscription
+ *
+ * Purpose:
+ * - Provide subscription status information for the authenticated user.
+ *
+ * Endpoints:
+ * - GET /api/subscription
+ *   - Auth: Requires an active Supabase session cookie.
+ *   - Returns: { isPro: boolean, endsAt: Date | null, provider: string | null }
+ *   - Errors:
+ *     - 401 when unauthenticated
+ *     - 500 on unexpected server errors
+ *
+ * Behavior:
+ * - Uses the Supabase SSR client wired to Next's cookie store to validate the session.
+ * - Looks up the user's subscription row in the database and returns a lightweight
+ *   representation suitable for frontend feature gating (isPro) and displaying
+ *   subscription end date / provider where applicable.
+ *
+ * Notes:
+ * - This handler intentionally returns minimal subscription metadata; sensitive
+ *   billing details are not exposed here.
+ */
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";

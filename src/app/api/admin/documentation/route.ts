@@ -16,7 +16,7 @@ async function isAdmin() {
           return cookieStore.get(name)?.value;
         },
       },
-    }
+    },
   );
 
   const {
@@ -33,6 +33,23 @@ async function isAdmin() {
   return profile?.role === "ADMIN";
 }
 
+/**
+ * GET /api/admin/documentation
+ *
+ * Return the list of documentation entries for the admin UI.
+ *
+ * Behaviour:
+ * - Verifies the caller is an admin via `isAdmin`. If the caller is not an admin
+ *   the handler returns a 401 Unauthorized JSON response.
+ * - Queries `prisma.documentation_entries` ordering by `topic` (ascending)
+ *   and returns the results as JSON with a 200 status on success.
+ * - On unexpected errors the handler logs the error and returns a 500 JSON error
+ *   response suitable for the admin UI to display a failure state.
+ *
+ * Notes:
+ * - This handler is intended for admin-only consumption; callers must be
+ *   authenticated and authorised as admins.
+ */
 export async function GET() {
   if (!(await isAdmin())) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -44,12 +61,13 @@ export async function GET() {
         topic: "asc",
       },
     });
-    return NextResponse.json(entries);
-  } catch (error: unknown) {
+
+    return NextResponse.json(entries, { status: 200 });
+  } catch (error) {
     console.error("Error fetching documentation entries:", error);
     return NextResponse.json(
       { error: "Failed to fetch documentation entries" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -66,7 +84,7 @@ export async function POST(request: Request) {
     if (!topic || !text) {
       return NextResponse.json(
         { error: "Topic and text are required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -85,7 +103,7 @@ export async function POST(request: Request) {
     console.error("Error creating documentation entry:", error);
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -1,3 +1,36 @@
+/**
+ * routineTasksService.ts
+ *
+ * Utilities for generating and managing user routine tasks.
+ *
+ * Responsibilities:
+ * - Determine whether routine-generated tasks should be created for a given
+ *   date and user's timezone.
+ * - Generate routine tasks for "today" based on user timetable settings and
+ *   active routine templates, persisting them into the `tasks` table.
+ * - Provide CRUD helpers for routine task templates stored in `routine_tasks`.
+ *
+ * Exports (high-level):
+ * - shouldGenerateRoutineTasksForToday(userId, dateString, timezoneOffset)
+ * - autoGenerateRoutineTasksForToday(userId, dateString, timezoneOffset)
+ * - getRoutineTasks(userId)
+ * - createRoutineTask(userId, title, duration)
+ * - updateRoutineTask(id, userId, data)
+ * - deleteRoutineTask(id, userId)
+ *
+ * Behavioural notes:
+ * - Titles and other sensitive strings are encrypted in the DB using the
+ *   `encrypt`/`decrypt` helpers exported by `./encryption`.
+ * - This module uses Prisma (`prisma`) for database operations; ensure the
+ *   application supplies a configured Prisma client.
+ * - The generation logic attempts to avoid duplicate routine-generated tasks
+ *   for a given date by checking for existing generated tasks before creating new ones.
+ *
+ * Implementation notes:
+ * - Time slots are chosen via a simple randomized (but non-overlapping) algorithm
+ *   snapped to 15-minute increments. This is intended for usability rather than
+ *   strict scheduling guarantees.
+ */
 import prisma from "./prisma";
 import { encrypt, decrypt } from "./encryption"; // [MODIFIED] Import helpers
 
@@ -30,7 +63,7 @@ export interface GeneratedTask {
 export async function shouldGenerateRoutineTasksForToday(
   userId: string,
   dateString: string,
-  timezoneOffset: number
+  timezoneOffset: number,
 ): Promise<boolean> {
   // Calculate user's current date based on timezone offset
   const now = new Date();
@@ -67,12 +100,12 @@ export async function shouldGenerateRoutineTasksForToday(
 export async function autoGenerateRoutineTasksForToday(
   userId: string,
   dateString: string,
-  timezoneOffset: number
+  timezoneOffset: number,
 ): Promise<GeneratedTask[]> {
   const shouldGenerate = await shouldGenerateRoutineTasksForToday(
     userId,
     dateString,
-    timezoneOffset
+    timezoneOffset,
   );
 
   if (!shouldGenerate) {
@@ -110,7 +143,7 @@ export async function autoGenerateRoutineTasksForToday(
       routineTask.duration_minutes,
       usedTimeSlots,
       timetableStart,
-      timetableEnd
+      timetableEnd,
     );
     const endTime = startTime + routineTask.duration_minutes;
 
@@ -147,7 +180,7 @@ function generateRandomTimeSlot(
   duration: number,
   usedTimeSlots: { start: number; end: number }[],
   timetableStartHour: number,
-  timetableEndHour: number
+  timetableEndHour: number,
 ): number {
   const dayStartMinutes = timetableStartHour * 60;
   const dayEndMinutes = timetableEndHour * 60;
@@ -162,7 +195,7 @@ function generateRandomTimeSlot(
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const latestStart = dayEndMinutes - duration;
     const randomStart = Math.floor(
-      Math.random() * (latestStart - dayStartMinutes) + dayStartMinutes
+      Math.random() * (latestStart - dayStartMinutes) + dayStartMinutes,
     );
 
     const snappedStart = snapTo15Minutes(randomStart);
@@ -176,7 +209,7 @@ function generateRandomTimeSlot(
 
     const hasOverlap = usedTimeSlots.some(
       (slot) =>
-        !(snappedStart >= slot.end || snappedStart + duration <= slot.start)
+        !(snappedStart >= slot.end || snappedStart + duration <= slot.start),
     );
 
     if (!hasOverlap) {
@@ -207,7 +240,7 @@ export async function getRoutineTasks(userId: string): Promise<RoutineTask[]> {
 export async function createRoutineTask(
   userId: string,
   title: string,
-  duration: number
+  duration: number,
 ): Promise<RoutineTask> {
   const encryptedTitle = encrypt(title);
 
@@ -229,7 +262,7 @@ export async function createRoutineTask(
 export async function updateRoutineTask(
   id: string,
   userId: string,
-  data: { title?: string; duration_minutes?: number; is_active?: boolean }
+  data: { title?: string; duration_minutes?: number; is_active?: boolean },
 ): Promise<RoutineTask | null> {
   if (data.title !== undefined) {
     data.title = encrypt(data.title);
@@ -254,7 +287,7 @@ export async function updateRoutineTask(
 
 export async function deleteRoutineTask(
   id: string,
-  userId: string
+  userId: string,
 ): Promise<RoutineTask | null> {
   const deletedTask = await prisma.routine_tasks.delete({
     where: {

@@ -1,3 +1,27 @@
+/*
+ * API: POST /api/calendars/sync-all
+ *
+ * Purpose:
+ * - Trigger synchronization for all calendar sources belonging to the authenticated user.
+ *
+ * Behavior:
+ * - Validates Supabase session using the SSR client wired to Next's cookie store.
+ * - Optionally accepts a JSON body with { date: "YYYY-MM-DD" } to narrow the sync range
+ *   to a single UTC day; this range is converted to start/end UTC instants.
+ * - Iterates over the user's calendar sources and:
+ *   - Delegates to the Google sync flow for sources with `type === "google"`.
+ *   - Delegates to the CalDAV sync flow for other source types.
+ * - Runs syncs in parallel using Promise.allSettled and returns a summary object:
+ *   { status: 'ok', synced: <number>, failed: <number>, total: <number> }.
+ *
+ * Authentication:
+ * - Requires an active Supabase session (via cookies). Returns HTTP 401 when unauthenticated.
+ *
+ * Notes:
+ * - The handler caps computed date ranges to avoid Date overflow (year >= 10000).
+ * - Sync failures for individual sources are captured and reported in the summary;
+ *   the overall handler only fails on unexpected internal errors.
+ */
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
