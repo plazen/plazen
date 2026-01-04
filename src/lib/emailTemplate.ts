@@ -352,7 +352,7 @@ export function generateEmailTemplate(options: EmailTemplateOptions): string {
             <td style="background-color: #0f1217; border-radius: 12px; padding: 40px; text-align: left; border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 4px 24px rgba(0,0,0,0.2);">
 
               <!-- Content -->
-              <div style="text-align: center;">
+              <div style="text-align: left;">
                 ${body}
               </div>
 
