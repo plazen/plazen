@@ -69,6 +69,170 @@ async function fetchJson<T = unknown>(
   return (await res.json()) as T;
 }
 
+async function graphql<T = unknown>(
+  query: string,
+  variables: Record<string, unknown> = {},
+): Promise<T> {
+  const res = await fetch("https://api.github.com/graphql", {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ query, variables }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    const message = `GitHub GraphQL API error ${res.status} ${res.statusText}: ${text}`;
+    const err: any = new Error(message);
+    err.status = res.status;
+    throw err;
+  }
+
+  const json = await res.json();
+  if (json.errors && json.errors.length > 0) {
+    const message = `GitHub GraphQL error: ${json.errors.map((e: any) => e.message).join(", ")}`;
+    throw new Error(message);
+  }
+
+  return json.data as T;
+}
+
+type DiscussionCategory = {
+  id: string;
+  name: string;
+  slug: string;
+};
+
+type RepositoryInfo = {
+  repository: {
+    id: string;
+    discussionCategories: {
+      nodes: DiscussionCategory[];
+    };
+  };
+};
+
+type CreatedDiscussion = {
+  createDiscussion: {
+    discussion: {
+      id: string;
+      url: string;
+      title: string;
+    };
+  };
+};
+
+async function getRepositoryAndCategoryId(
+  categoryName: string = "Announcements",
+): Promise<{ repositoryId: string; categoryId: string }> {
+  const query = `
+    query($owner: String!, $repo: String!) {
+      repository(owner: $owner, name: $repo) {
+        id
+        discussionCategories(first: 25) {
+          nodes {
+            id
+            name
+            slug
+          }
+        }
+      }
+    }
+  `;
+
+  const data = await graphql<RepositoryInfo>(query, {
+    owner: OWNER,
+    repo: REPO,
+  });
+
+  const category = data.repository.discussionCategories.nodes.find(
+    (c) =>
+      c.name.toLowerCase() === categoryName.toLowerCase() ||
+      c.slug.toLowerCase() === categoryName.toLowerCase(),
+  );
+
+  if (!category) {
+    throw new Error(
+      `Discussion category "${categoryName}" not found in ${OWNER}/${REPO}`,
+    );
+  }
+
+  return {
+    repositoryId: data.repository.id,
+    categoryId: category.id,
+  };
+}
+
+async function createDiscussion(
+  repositoryId: string,
+  categoryId: string,
+  title: string,
+  body: string,
+): Promise<{ id: string; url: string; title: string }> {
+  const mutation = `
+    mutation($repositoryId: ID!, $categoryId: ID!, $title: String!, $body: String!) {
+      createDiscussion(input: {
+        repositoryId: $repositoryId,
+        categoryId: $categoryId,
+        title: $title,
+        body: $body
+      }) {
+        discussion {
+          id
+          url
+          title
+        }
+      }
+    }
+  `;
+
+  const data = await graphql<CreatedDiscussion>(mutation, {
+    repositoryId,
+    categoryId,
+    title,
+    body,
+  });
+
+  return data.createDiscussion.discussion;
+}
+
+/**
+ * Create a discussion under the Announcements category for a release.
+ *
+ * @param release - The release object containing tag_name, name, body, and html_url
+ * @param notesUrl - URL to the full release notes page
+ * @returns The created discussion info with id, url, and title
+ *
+ * @throws Error if GITHUB_BOT_TOKEN is not set or if the Announcements category doesn't exist
+ */
+async function createReleaseAnnouncement(
+  release: Release,
+  notesUrl: string,
+): Promise<{ id: string; url: string; title: string }> {
+  if (!GITHUB_TOKEN) {
+    throw new Error(
+      "GITHUB_BOT_TOKEN is not configured. Cannot create discussion.",
+    );
+  }
+
+  const { repositoryId, categoryId } =
+    await getRepositoryAndCategoryId("Announcements");
+
+  const title = `🚀 ${release.name || release.tag_name} Released!`;
+
+  const body = `## ${release.name || release.tag_name}
+
+${release.body || ""}
+
+---
+
+📦 **[View Release on GitHub](${release.html_url})**
+
+📝 **[Full Release Notes](${notesUrl})**
+`;
+
+  return await createDiscussion(repositoryId, categoryId, title, body);
+}
+
 async function getReleaseByTag(tag: string): Promise<Release> {
   const url = `https://api.github.com/repos/${OWNER}/${REPO}/releases/tags/${encodeURIComponent(
     tag,
@@ -205,6 +369,9 @@ export async function addAllReactionsToRelease(releaseId: number) {
  *
  * @param releaseTag - the git tag name for the release (e.g. \"v1.2.3\")
  * @param notesUrl - publicly accessible URL pointing to the full release notes
+ * @param options - optional settings:
+ *   - createDiscussion: boolean (default: true) - whether to create a discussion
+ *     announcement for the release under the Announcements category.
  * @returns Promise resolving to:
  *   {
  *     release: Release; // the updated release object from GitHub
@@ -220,6 +387,7 @@ export async function addAllReactionsToRelease(releaseId: number) {
 export async function syncReleaseWithNotes(
   releaseTag: string,
   notesUrl: string,
+  options: { createDiscussion?: boolean } = { createDiscussion: true },
 ) {
   if (!GITHUB_TOKEN) {
     throw new Error("GITHUB_BOT_TOKEN must be set to sync release with notes.");
@@ -239,9 +407,25 @@ export async function syncReleaseWithNotes(
     reactionsSummary = { error: (err as Error).message || err };
   }
 
+  let discussionResult:
+    | { id: string; url: string; title: string }
+    | { error: string }
+    | null = null;
+  if (options.createDiscussion !== false) {
+    try {
+      discussionResult = await createReleaseAnnouncement(
+        updatedRelease,
+        notesUrl,
+      );
+    } catch (err) {
+      discussionResult = { error: (err as Error).message || String(err) };
+    }
+  }
+
   return {
     release: updatedRelease,
     reactions: reactionsSummary,
+    discussion: discussionResult,
   };
 }
 
@@ -270,9 +454,10 @@ export async function syncReleaseWithNotes(
 export async function trySyncReleaseWithNotes(
   releaseTag: string,
   notesUrl: string,
+  options: { createDiscussion?: boolean } = { createDiscussion: true },
 ) {
   try {
-    return await syncReleaseWithNotes(releaseTag, notesUrl);
+    return await syncReleaseWithNotes(releaseTag, notesUrl, options);
   } catch (error) {
     console.error("GitHub bot sync failed:", error);
     return { error: (error as Error).message || error };
