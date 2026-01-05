@@ -202,7 +202,7 @@ async function createDiscussion(
  * @param notesUrl - URL to the full release notes page
  * @returns The created discussion info with id, url, and title
  *
- * @throws Error if GITHUB_BOT_TOKEN is not set or if the Announcements category doesn't exist
+ * @throws Error if GITHUB_TOKEN is not set or if the Announcements category doesn't exist
  */
 async function createReleaseAnnouncement(
   release: Release,
