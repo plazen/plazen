@@ -168,7 +168,7 @@ export default function RootLayout({
                   <ul className="space-y-3">
                     <li>
                       <Link
-                        href="/documentation"
+                        href="https://docs.plazen.org"
                         className="hover:text-primary transition-colors"
                       >
                         Documentation
