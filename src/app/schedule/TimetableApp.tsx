@@ -566,12 +566,30 @@ export default function TimetableApp() {
                     </span>
                   )}
                 </span>
-                <span className="text-sm text-muted-foreground">
-                  {date?.toLocaleDateString("en-US", {
-                    weekday: "long",
-                    month: "long",
-                    day: "numeric",
-                  })}
+                <span className="text-sm text-foreground">
+                  {subscription?.isPro && subscription?.endsAt ? (
+                    <>
+                      <span className="text-xl font-semibold sm:hidden">
+                        Plazen
+                        <span className="ml-2 text-sm font-normal text-primary">
+                          Pro
+                        </span>
+                      </span>
+                      <span className="hidden sm:inline">
+                        {date?.toLocaleDateString("en-US", {
+                          weekday: "long",
+                          month: "long",
+                          day: "numeric",
+                        })}
+                      </span>
+                    </>
+                  ) : (
+                    date?.toLocaleDateString("en-US", {
+                      weekday: "long",
+                      month: "long",
+                      day: "numeric",
+                    })
+                  )}
                 </span>
               </div>
               <div className="flex items-center space-x-2">
