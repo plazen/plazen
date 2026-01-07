@@ -566,10 +566,10 @@ export default function TimetableApp() {
                     </span>
                   )}
                 </span>
-                <span className="text-sm text-foreground">
+                <span className="text-sm text-muted-foreground">
                   {subscription?.isPro && subscription?.endsAt ? (
                     <>
-                      <span className="text-xl font-semibold sm:hidden">
+                      <span className="text-xl font-semibold text-foreground sm:hidden">
                         Plazen
                         <span className="ml-2 text-sm font-normal text-primary">
                           Pro
