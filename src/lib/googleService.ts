@@ -54,7 +54,7 @@
  *   and background retry strategies external to this helper.
  */
 import prisma from "@/lib/prisma";
-import { decrypt } from "@/lib/encryption";
+import { encrypt, decrypt } from "@/lib/encryption";
 
 /** Log level used by sync helpers. */
 type LogLevel = "info" | "warn" | "error";
@@ -242,14 +242,28 @@ export async function syncGoogleSource(
     // List calendars on the account
     const calListUrl =
       "https://www.googleapis.com/calendar/v3/users/me/calendarList";
-    const calListRes = await fetch(calListUrl, { headers });
-    if (!calListRes.ok) {
-      const text = await calListRes.text();
-      log("error", "Failed to fetch Google calendar list", {
-        status: calListRes.status,
-        body: text,
-      });
-      return;
+    let calListRes = await fetch(calListUrl, { headers });
+
+    // Handle 401 on the calendar list fetch
+    if (calListRes.status === 401 && maybeRefreshToken) {
+      log(
+        "info",
+        "Access token expired during calendar list fetch. Refreshing...",
+      );
+      const refreshed = await refreshAccessToken(maybeRefreshToken, log);
+      if (refreshed) {
+        accessToken = refreshed;
+        // Update headers with new token
+        headers.Authorization = `Bearer ${accessToken}`;
+
+        // Retry the request
+        calListRes = await fetch(calListUrl, { headers });
+
+        await prisma.calendar_sources.update({
+          where: { id: sourceId },
+          data: { username: encrypt(accessToken) },
+        });
+      }
     }
 
     const calListBody = await calListRes.json();
