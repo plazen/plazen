@@ -30,8 +30,8 @@ export async function GET() {
 
     // Sort in memory to handle semantic versioning correctly (e.g. 1.10 > 1.2)
     releaseNotes.sort((a, b) => {
-      const versionA = a.version.replace(/^v/, "");
-      const versionB = b.version.replace(/^v/, "");
+      const versionA = (a.version || "").replace(/^v/, "");
+      const versionB = (b.version || "").replace(/^v/, "");
 
       const partsA = versionA.split(".").map(Number);
       const partsB = versionB.split(".").map(Number);
