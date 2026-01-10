@@ -57,33 +57,6 @@ module.exports = {
               }
               newCommit.type = `${newCommit.emoji} ${newCommit.originalType || type}`;
 
-              if (newCommit.subject) {
-                const host = context.host || "https://github.com";
-                const owner =
-                  context.owner ||
-                  (context.repository ? context.repository.split("/")[0] : "");
-                const repo = context.repository || context.packageName || "";
-
-                newCommit.subject = newCommit.subject.replace(
-                  /(?:\s|^)(#)(\d+)\b/g,
-                  (_, p1, id) => {
-                    return ` [#${id}](${host}/${owner}/${repo}/issues/${id})`;
-                  },
-                );
-                newCommit.subject = newCommit.subject.replace(
-                  /([a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+)#(\d+)/g,
-                  (_, repoPath, id) => {
-                    return `[${repoPath}#${id}](${host}/${repoPath}/issues/${id})`;
-                  },
-                );
-                newCommit.subject = newCommit.subject.replace(
-                  /\(PR\s+#(\d+)\)/gi,
-                  (_, id) => {
-                    return `(PR [#${id}](${host}/${owner}/${repo}/pull/${id}))`;
-                  },
-                );
-              }
-
               const author = newCommit.author || newCommit.committer || {};
               if (author) {
                 const username = author.username || author.name || author.login;
@@ -110,29 +83,11 @@ module.exports = {
               const lines = [];
               if (contributors.size > 0) {
                 for (const [, info] of contributors) {
-                  const nameClause =
-                    info.name && info.name !== info.username
-                      ? ` (${info.name})`
-                      : "";
-                  if (info.url && info.url.startsWith("http")) {
-                    lines.push(
-                      `- [@${info.username}](${info.url}) ${nameClause}`,
-                    );
-                  } else if (info.url && info.url.startsWith("mailto:")) {
-                    if (info.username) {
-                      lines.push(
-                        `- [@${info.username}](${info.url})${nameClause}`,
-                      );
-                    } else {
-                      lines.push(
-                        `- [${info.name || info.username}](${info.url})`,
-                      );
-                    }
-                  } else if (info.username) {
+                  if (info.username) {
                     // Plain @username will trigger a GitHub mention when the changelog is viewed on GitHub.
-                    lines.push(`- @${info.username}${nameClause}`);
+                    lines.push(`- @${info.username}`);
                   } else {
-                    lines.push(`- ${info.name || info.username}`);
+                    lines.push(`- ${info.name}`);
                   }
                 }
               }
