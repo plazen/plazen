@@ -183,7 +183,7 @@ const Timetable: React.FC<TimetableProps> = ({
   const isToday = new Date().toDateString() === date.toDateString();
 
   return (
-    <div className="bg-card rounded-xl shadow-2xl p-4 relative border border-border">
+    <div className="bg-card rounded-xl shadow-2xl p-4 relative border border-border select-none cursor-default">
       <div className="absolute inset-0 bg-[radial-gradient(theme(colors.foreground)_/_0.5,transparent_0.5px)] [background-size:16px_16px] opacity-5"></div>
       <div className="relative h-[850px] overflow-y-auto pr-2 py-2">
         <div className="absolute top-3 bottom-3 w-16 text-right text-muted-foreground">
@@ -214,7 +214,7 @@ const Timetable: React.FC<TimetableProps> = ({
         </div>
         <div
           ref={timetableGridRef}
-          className="relative h-full ml-16 cursor-pointer"
+          className="relative h-full ml-16 md:cursor-default cursor-pointer"
           onClick={handleGridClick}
         >
           {settings.show_time_needle && isToday && (
@@ -276,7 +276,7 @@ const Timetable: React.FC<TimetableProps> = ({
                   y: 0,
                 }}
                 transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-                className={`absolute p-2 flex flex-col text-foreground cursor-pointer rounded-lg backdrop-blur-sm border border-border overflow-hidden ${
+                className={`absolute p-2 flex flex-col text-foreground md:cursor-default cursor-pointer rounded-lg backdrop-blur-sm border border-border overflow-hidden ${
                   duration < 60 ? "justify-center" : "justify-start"
                 }`}
                 style={{
