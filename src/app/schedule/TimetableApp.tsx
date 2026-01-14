@@ -40,6 +40,9 @@ export default function TimetableApp() {
   const [user, setUser] = useState<User | null>(null);
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false);
+  const [addTaskInitialTime, setAddTaskInitialTime] = useState<
+    string | undefined
+  >(undefined);
   const { setTheme } = useTheme();
   type Task = {
     id: string;
@@ -476,6 +479,11 @@ export default function TimetableApp() {
   const handleOpenRescheduleModal = (task: Task) => setReschedulingTask(task);
   const handleCloseRescheduleModal = () => setReschedulingTask(null);
 
+  const handleTimetableEmptyClick = (time: string) => {
+    setAddTaskInitialTime(time);
+    setIsAddTaskModalOpen(true);
+  };
+
   const handleUpdateTaskTime = async (
     taskId: string,
     newTime: string,
@@ -714,6 +722,7 @@ export default function TimetableApp() {
                   onToggleDone={handleToggleDone}
                   onDeleteTask={handleDeleteTask}
                   onReschedule={handleOpenRescheduleModal}
+                  onClickEmptySpace={handleTimetableEmptyClick}
                 />
               )}
             </motion.div>
@@ -726,7 +735,10 @@ export default function TimetableApp() {
             transition={{ type: "spring", delay: 0.5 }}
           >
             <Button
-              onClick={() => setIsAddTaskModalOpen(true)}
+              onClick={() => {
+                setAddTaskInitialTime(undefined);
+                setIsAddTaskModalOpen(true);
+              }}
               size="lg"
               className="h-14 w-14 rounded-full shadow-lg hover:shadow-xl transition-shadow bg-primary hover:bg-primary/90"
             >
@@ -780,9 +792,13 @@ export default function TimetableApp() {
 
         <AddTaskModal
           isOpen={isAddTaskModalOpen}
-          onClose={() => setIsAddTaskModalOpen(false)}
+          onClose={() => {
+            setIsAddTaskModalOpen(false);
+            setAddTaskInitialTime(undefined);
+          }}
           onSubmit={handleAddTask}
           isLoading={isAddingTask}
+          initialTime={addTaskInitialTime}
         />
 
         {reschedulingTask && (

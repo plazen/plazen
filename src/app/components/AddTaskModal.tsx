@@ -28,6 +28,7 @@ interface AddTaskModalProps {
     scheduledTime: string;
   }) => void;
   isLoading: boolean;
+  initialTime?: string;
 }
 
 export default function AddTaskModal({
@@ -35,11 +36,20 @@ export default function AddTaskModal({
   onClose,
   onSubmit,
   isLoading,
+  initialTime,
 }: AddTaskModalProps) {
   const [title, setTitle] = useState("");
   const [isTimeSensitive, setIsTimeSensitive] = useState(true);
   const [duration, setDuration] = useState(30);
   const [scheduledTime, setScheduledTime] = useState("");
+
+  // Set initial time when modal opens with a time value
+  React.useEffect(() => {
+    if (isOpen && initialTime) {
+      setScheduledTime(initialTime);
+      setIsTimeSensitive(true);
+    }
+  }, [isOpen, initialTime]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
