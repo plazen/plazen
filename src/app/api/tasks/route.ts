@@ -167,8 +167,12 @@ export async function GET(request: Request) {
         if (!task.scheduled_time) return false;
 
         // Extract the date part directly from the ISO string to avoid timezone conversion
-        const taskDateTime = task.scheduled_time as Date;
-        const isoString = taskDateTime.toISOString();
+        // Handle both Date objects (real DB) and strings (mock DB in dev mode)
+        const taskDateTime = task.scheduled_time;
+        const isoString =
+          taskDateTime instanceof Date
+            ? taskDateTime.toISOString()
+            : String(taskDateTime);
 
         // Extract date part from ISO string (YYYY-MM-DD)
         const taskDateString = isoString.split("T")[0];
