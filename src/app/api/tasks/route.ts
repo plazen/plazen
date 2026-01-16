@@ -27,7 +27,7 @@
  * - The handlers use Prisma for DB access and employ careful timezone normalization to
  *   avoid accidental shifts when working with local date strings.
  */
-import { createServerClient } from "@supabase/ssr";
+import { createServerClient } from "@/lib/supabaseServer";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";

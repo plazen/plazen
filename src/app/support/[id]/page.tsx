@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { TicketView } from "@/components/TicketView";
-import { createServerClient } from "@supabase/ssr";
+import { createServerClient } from "@/lib/supabaseServer";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import prisma from "@/lib/prisma";

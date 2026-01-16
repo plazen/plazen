@@ -25,7 +25,7 @@
  *   serving cached static content.
  * - Errors are returned as JSON `{ error: string }` with appropriate HTTP status codes.
  */
-import { createServerClient } from "@supabase/ssr";
+import { createServerClient } from "@/lib/supabaseServer";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";

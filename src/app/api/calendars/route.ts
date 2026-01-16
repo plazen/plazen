@@ -37,7 +37,7 @@
  *   of the calendar source.
  * - Error responses use NextResponse with appropriate HTTP status codes.
  */
-import { createServerClient } from "@supabase/ssr";
+import { createServerClient } from "@/lib/supabaseServer";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";

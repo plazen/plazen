@@ -1,6 +1,6 @@
 "use client";
 
-import { createBrowserClient } from "@supabase/ssr";
+import { createBrowserClient } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 import {
   type ChangeEvent,

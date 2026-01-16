@@ -25,7 +25,7 @@
  *   errors which are surfaced as 500 responses by Next/Node if not explicitly caught here.
  */
 
-import { createServerClient } from "@supabase/ssr";
+import { createServerClient } from "@/lib/supabaseServer";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";

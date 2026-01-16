@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Button } from "@/app/components/ui/button";
 import { Plus, MessageSquare } from "lucide-react";
-import { createServerClient } from "@supabase/ssr";
+import { createServerClient } from "@/lib/supabaseServer";
 import { cookies } from "next/headers";
 import prisma from "@/lib/prisma";
 import { formatDistanceToNow } from "date-fns";

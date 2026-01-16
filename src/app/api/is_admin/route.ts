@@ -24,7 +24,7 @@
  *   profile record for new users so downstream admin-checking logic has a stable
  *   place to read roles from.
  */
-import { createServerClient } from "@supabase/ssr";
+import { createServerClient } from "@/lib/supabaseServer";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";

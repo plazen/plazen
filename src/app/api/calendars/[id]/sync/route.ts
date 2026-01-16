@@ -35,7 +35,7 @@
  *   HTTP statuses where possible. Initial sync details are best-effort — heavy sync
  *   operations should be performed asynchronously when necessary.
  */
-import { createServerClient } from "@supabase/ssr";
+import { createServerClient } from "@/lib/supabaseServer";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { syncCalendarSource, type SyncLogEntry } from "@/lib/calDavService";

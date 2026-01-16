@@ -22,7 +22,7 @@
  * - The route is marked `force-dynamic` to always fetch fresh data from the DB.
  * - If you want notifications to be public (no auth), remove the session check below.
  */
-import { createServerClient } from "@supabase/ssr";
+import { createServerClient } from "@/lib/supabaseServer";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";

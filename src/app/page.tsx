@@ -5,7 +5,7 @@ import Link from "next/link";
 import styles from "./marketing.module.css";
 import Image from "next/image";
 import { PlazenLogo } from "@/components/plazen-logo";
-import { createBrowserClient } from "@supabase/ssr"; // Import the client
+import { createBrowserClient } from "@/lib/supabaseClient"; // Import the client
 import type { SupabaseClient } from "@supabase/supabase-js";
 import dynamic from "next/dynamic";
 

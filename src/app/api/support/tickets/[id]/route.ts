@@ -25,7 +25,7 @@
  * - Sensitive user metadata (like raw_user_meta_data) is read only to present display_name/avatar
  *   for the UI; tokens/credentials are not exposed here.
  */
-import { createServerClient } from "@supabase/ssr";
+import { createServerClient } from "@/lib/supabaseServer";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";

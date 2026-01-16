@@ -24,7 +24,7 @@
  * - The client should redirect the user to the returned `url`. Google will redirect back to the
  *   callback endpoint where the code will be exchanged for tokens and persisted (server-side).
  */
-import { createServerClient } from "@supabase/ssr";
+import { createServerClient } from "@/lib/supabaseServer";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 

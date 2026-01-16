@@ -8,7 +8,7 @@ import { ArrowLeft, Send, X, Shield, User } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import LoadingSpinner from "@/app/components/LoadingSpinner";
-import { createBrowserClient } from "@supabase/ssr";
+import { createBrowserClient } from "@/lib/supabaseClient";
 
 /**
  * Types used by the TicketView component.

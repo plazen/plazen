@@ -20,7 +20,7 @@ import {
   Calendar as CalendarIcon,
 } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
-import { createBrowserClient } from "@supabase/ssr";
+import { createBrowserClient } from "@/lib/supabaseClient";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "@/components/theme-provider";
 import { Theme } from "@/lib/theme";

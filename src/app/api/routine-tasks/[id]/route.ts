@@ -25,7 +25,7 @@
  * - Titles are stored encrypted at rest using the project's encryption helpers.
  * - Handlers are implemented server-side and use Prisma for DB access.
  */
-import { createServerClient } from "@supabase/ssr";
+import { createServerClient } from "@/lib/supabaseServer";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";

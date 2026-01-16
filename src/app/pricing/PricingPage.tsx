@@ -12,7 +12,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { PlazenLogo } from "@/components/plazen-logo";
-import { createBrowserClient } from "@supabase/ssr";
+import { createBrowserClient } from "@/lib/supabaseClient";
 
 export default function PricingPage() {
   const [subscription, setSubscription] = useState<{
