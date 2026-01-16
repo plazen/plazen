@@ -91,6 +91,12 @@ start:
 	@echo "Starting development server..."
 	$(NPM) run dev
 
+fulldev:
+	rm .env
+	cp .env.sensitive .env
+	$(NPM) run dev
+
 dev:
+	cp .env .env.sensitive
 	cp env.dev .env
 	$(NPM) run dev
