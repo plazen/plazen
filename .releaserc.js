@@ -57,21 +57,27 @@ module.exports = {
               }
               newCommit.type = `${newCommit.emoji} ${newCommit.originalType || type}`;
 
+              // Clean up subject: remove trailing ", closes #XX" and empty "()"
+              if (newCommit.subject) {
+                newCommit.subject = newCommit.subject
+                  .replace(/,?\s*closes\s+#\d+/gi, "")
+                  .replace(/\(\s*\)/g, "")
+                  .trim();
+              }
+
               const author = newCommit.author || newCommit.committer || {};
               if (author) {
-                const username = author.username || author.name || author.login;
+                // Prefer GitHub username/login over display name
+                const username = author.login || author.username;
+                const email = author.email;
                 if (username) {
-                  let url;
-                  if (author.username || author.login) {
-                    url =
-                      (context.host || "https://github.com") + "/" + username;
-                  } else if (author.email) {
-                    url = `mailto:${author.email}`;
-                  }
+                  const url =
+                    (context.host || "https://github.com") + "/" + username;
                   if (!contributors.has(username)) {
                     contributors.set(username, {
                       name: author.name || username,
                       username,
+                      email,
                       url,
                     });
                   }
@@ -84,8 +90,10 @@ module.exports = {
               if (contributors.size > 0) {
                 for (const [, info] of contributors) {
                   if (info.username) {
-                    // Plain @username will trigger a GitHub mention when the changelog is viewed on GitHub.
-                    lines.push(`- @${info.username}`);
+                    const emailPart = info.email
+                      ? ` - [${info.email}](mailto:${info.email})`
+                      : "";
+                    lines.push(`- @${info.username}${emailPart}`);
                   } else {
                     lines.push(`- ${info.name}`);
                   }
