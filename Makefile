@@ -32,6 +32,7 @@ help:
 	@echo "  push-db   - generate Prisma client and push the schema to the database"
 	@echo "  check     - basic environment & DB health checks (.env and prisma connect)"
 	@echo "  start     - run the development server (npm run dev)"
+	@echo "  dev       - run the development server with dev mode enabled"
 
 # Install dependencies using the project's lockfile if present.
 install:
@@ -88,4 +89,8 @@ check:
 # Start dev server
 start:
 	@echo "Starting development server..."
+	$(NPM) run dev
+
+dev:
+	cp env.dev .env
 	$(NPM) run dev
