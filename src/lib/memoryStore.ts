@@ -240,6 +240,8 @@ class MemoryStore {
 
     // Create a pro subscription for dev user
     const subscriptionId = generateUUID();
+    const oneYearFromNow = new Date(now);
+    oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
     this.subscriptions.set(DEV_USER_ID, {
       id: subscriptionId,
       user_id: DEV_USER_ID,
@@ -247,7 +249,7 @@ class MemoryStore {
       provider: "dev",
       subscription_id: "dev-subscription",
       starts_at: now,
-      ends_at: null,
+      ends_at: oneYearFromNow,
       created_at: now,
       updated_at: now,
     });
@@ -342,9 +344,7 @@ class MemoryStore {
   /**
    * Create a new task and return it.
    */
-  createTask(
-    data: Omit<Task, "id" | "created_at">,
-  ): Task {
+  createTask(data: Omit<Task, "id" | "created_at">): Task {
     const task: Task = {
       id: taskIdCounter++,
       created_at: new Date(),

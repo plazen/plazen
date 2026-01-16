@@ -12,7 +12,7 @@ export async function GET() {
   if (!isDevMode()) {
     return NextResponse.json(
       { error: "Dev mode is not enabled" },
-      { status: 403 }
+      { status: 403 },
     );
   }
 
@@ -33,7 +33,7 @@ export async function PATCH(request: Request) {
   if (!isDevMode()) {
     return NextResponse.json(
       { error: "Dev mode is not enabled" },
-      { status: 403 }
+      { status: 403 },
     );
   }
 
@@ -53,10 +53,12 @@ export async function PATCH(request: Request) {
     // Update subscription status if provided
     if (typeof isSubscribed === "boolean") {
       const subscription = memoryStore.subscriptions.get(DEV_USER_ID);
+      const OneYearFromNow = new Date();
+      OneYearFromNow.setFullYear(OneYearFromNow.getFullYear() + 1); // One year from the current time
       if (subscription) {
         subscription.is_pro = isSubscribed;
         if (isSubscribed) {
-          subscription.ends_at = null; // Pro with no end date
+          subscription.ends_at = OneYearFromNow; // Subscription will end a year from the date of modification
         } else {
           subscription.ends_at = new Date(); // Ended subscription
         }
@@ -76,7 +78,7 @@ export async function PATCH(request: Request) {
     console.error("Error updating dev settings:", error);
     return NextResponse.json(
       { error: "Failed to update settings" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
