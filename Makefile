@@ -97,6 +97,11 @@ fulldev:
 	$(NPM) run dev
 
 dev:
+	@echo "Copying the development configuration..."
+	touch .env
 	cp .env .env.sensitive
 	cp env.dev .env
+	@echo "Installing dependencies..."
+	$(NPM) install
+	@echo "Running the development server..."
 	$(NPM) run dev
