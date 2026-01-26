@@ -13,7 +13,8 @@
  *   - Purpose: Update user settings (partial updates supported).
  *   - Auth: Requires an active Supabase session.
  *   - Request body: any subset of:
- *       { timetable_start?, timetable_end?, show_time_needle?, theme?, telegram_id?, notifications? }
+ *       { timetable_start?, timetable_end?, show_time_needle?, theme?, telegram_id?,
+ *         notifications?, is_profile_public?, username?, bio? }
  *   - Behavior: Only provided fields will be updated; `updated_at` will be set to now.
  *   - Response: 200 with the updated settings object on success, 401 when unauthenticated,
  *     400 for invalid input, 500 on server error.
@@ -114,6 +115,9 @@ export async function PATCH(request: Request) {
       theme,
       telegram_id,
       notifications,
+      is_profile_public,
+      username,
+      bio,
     } = body;
 
     const dataToUpdate: {
@@ -123,6 +127,9 @@ export async function PATCH(request: Request) {
       theme?: string;
       telegram_id?: string | null;
       notifications?: boolean;
+      is_profile_public?: boolean;
+      username?: string | null;
+      bio?: string | null;
       updated_at: Date;
     } = {
       updated_at: new Date(),
@@ -141,6 +148,43 @@ export async function PATCH(request: Request) {
     }
     if (notifications !== undefined) dataToUpdate.notifications = notifications;
 
+    // Handle public profile fields
+    if (is_profile_public !== undefined)
+      dataToUpdate.is_profile_public = is_profile_public;
+    if (bio !== undefined) dataToUpdate.bio = bio?.slice(0, 500) || null;
+    if (username !== undefined) {
+      if (username === null || username === "") {
+        dataToUpdate.username = null;
+      } else {
+        // Validate username format
+        const usernameValidation = validateUsername(username);
+        if (!usernameValidation.valid) {
+          return NextResponse.json(
+            { error: usernameValidation.message },
+            { status: 400 },
+          );
+        }
+
+        // Check uniqueness (case-insensitive)
+        const normalizedUsername = username.toLowerCase();
+        const existing = await prisma.userSettings.findFirst({
+          where: {
+            username: normalizedUsername,
+            NOT: { user_id: session.user.id },
+          },
+        });
+
+        if (existing) {
+          return NextResponse.json(
+            { error: "This username is already taken" },
+            { status: 400 },
+          );
+        }
+
+        dataToUpdate.username = normalizedUsername;
+      }
+    }
+
     const updatedSettings = await prisma.userSettings.update({
       where: { user_id: session.user.id },
       data: dataToUpdate,
@@ -154,4 +198,55 @@ export async function PATCH(request: Request) {
       { status: 500 },
     );
   }
+}
+
+const RESERVED_USERNAMES = [
+  "admin",
+  "api",
+  "settings",
+  "account",
+  "login",
+  "signup",
+  "logout",
+  "profile",
+  "user",
+  "users",
+  "support",
+  "help",
+  "pricing",
+  "about",
+  "documentation",
+  "docs",
+  "schedule",
+  "plazen",
+  "null",
+  "undefined",
+  "u",
+  "release-notes",
+  "privacy_policy",
+  "tos",
+  "license",
+  "forgot-password",
+  "reset-password",
+];
+
+function validateUsername(username: string): {
+  valid: boolean;
+  message?: string;
+} {
+  if (!username) return { valid: false, message: "Username is required" };
+  if (username.length < 3)
+    return { valid: false, message: "Username must be at least 3 characters" };
+  if (username.length > 30)
+    return { valid: false, message: "Username must be 30 characters or less" };
+  if (!/^[a-zA-Z0-9_]+$/.test(username))
+    return {
+      valid: false,
+      message: "Username can only contain letters, numbers, and underscores",
+    };
+  if (username.startsWith("_"))
+    return { valid: false, message: "Username cannot start with underscore" };
+  if (RESERVED_USERNAMES.includes(username.toLowerCase()))
+    return { valid: false, message: "This username is reserved" };
+  return { valid: true };
 }

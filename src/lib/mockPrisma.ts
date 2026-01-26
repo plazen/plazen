@@ -22,6 +22,8 @@ import memoryStore, {
   DocumentationEntry,
   Notification,
   User,
+  Badge,
+  UserBadge,
 } from "./memoryStore";
 
 // Helper for filtering with Prisma-like where clauses
@@ -696,11 +698,77 @@ export const mockPrisma = {
   // Public schema
   tasks: tasksOperations,
 
-  userSettings: createModelOperations<UserSettings>(
-    () => memoryStore.userSettings,
-    () => "user_id", // UserSettings uses user_id as unique key
-    () => memoryStore.generateId(),
-  ),
+  userSettings: {
+    ...createModelOperations<UserSettings>(
+      () => memoryStore.userSettings,
+      () => "user_id", // UserSettings uses user_id as unique key
+      () => memoryStore.generateId(),
+    ),
+    findFirst: async (args?: {
+      where?: WhereClause<UserSettings>;
+      orderBy?: { [key: string]: "asc" | "desc" };
+      include?: {
+        user_badges?:
+          | boolean
+          | {
+              include?: { badge?: boolean };
+              orderBy?: { granted_at?: "asc" | "desc" };
+            };
+      };
+    }): Promise<
+      | (UserSettings & { user_badges?: (UserBadge & { badge?: Badge })[] })
+      | null
+    > => {
+      let items = Array.from(memoryStore.userSettings.values());
+
+      if (args?.where) {
+        items = items.filter((item) =>
+          matchesWhere(
+            item as UserSettings & Record<string, unknown>,
+            args.where!,
+          ),
+        );
+      }
+
+      if (args?.orderBy) {
+        items = sortItems(items, args.orderBy);
+      }
+
+      const settings = items[0];
+      if (!settings) return null;
+
+      if (args?.include?.user_badges) {
+        let userBadges = Array.from(memoryStore.userBadges.values()).filter(
+          (ub) => ub.user_id === settings.user_id,
+        );
+
+        if (
+          typeof args.include.user_badges === "object" &&
+          args.include.user_badges.orderBy?.granted_at
+        ) {
+          userBadges = sortItems(userBadges, {
+            granted_at: args.include.user_badges.orderBy.granted_at,
+          });
+        }
+
+        const includesBadge =
+          typeof args.include.user_badges === "object" &&
+          args.include.user_badges.include?.badge;
+
+        const userBadgesWithBadge = userBadges.map((ub) => {
+          if (includesBadge) {
+            const badge = memoryStore.badges.get(ub.badge_id);
+            return { ...ub, badge };
+          }
+          return ub;
+        });
+
+        return { ...settings, user_badges: userBadgesWithBadge };
+      }
+
+      return settings;
+    },
+  },
 
   routineTasks: createModelOperations<RoutineTask>(
     () => memoryStore.routineTasks,
@@ -792,6 +860,140 @@ export const mockPrisma = {
     () => "id",
     () => memoryStore.generateId(),
   ),
+
+  badges: {
+    ...createModelOperations<Badge>(
+      () => memoryStore.badges,
+      () => "id",
+      () => memoryStore.generateId(),
+    ),
+    findMany: async (args?: {
+      where?: WhereClause<Badge>;
+      orderBy?: { [key: string]: "asc" | "desc" };
+      include?: { _count?: { select?: { user_badges?: boolean } } };
+    }): Promise<(Badge & { _count?: { user_badges: number } })[]> => {
+      let items = Array.from(memoryStore.badges.values());
+
+      if (args?.where) {
+        items = items.filter((item) =>
+          matchesWhere(item as Badge & Record<string, unknown>, args.where!),
+        );
+      }
+
+      items = sortItems(items, args?.orderBy);
+
+      if (args?.include?._count?.select?.user_badges) {
+        return items.map((badge) => ({
+          ...badge,
+          _count: {
+            user_badges: Array.from(memoryStore.userBadges.values()).filter(
+              (ub) => ub.badge_id === badge.id,
+            ).length,
+          },
+        }));
+      }
+
+      return items;
+    },
+    findUnique: async (args: {
+      where: Partial<Badge>;
+      include?: {
+        user_badges?:
+          | boolean
+          | {
+              include?: {
+                settings?: {
+                  select?: { user_id?: boolean; username?: boolean };
+                };
+              };
+              orderBy?: { granted_at?: "asc" | "desc" };
+            };
+      };
+    }): Promise<
+      | (Badge & {
+          user_badges?: (UserBadge & {
+            settings?: { user_id: string; username: string | null };
+          })[];
+        })
+      | null
+    > => {
+      const idValue = (args.where as Record<string, unknown>).id;
+      const badge = idValue ? memoryStore.badges.get(idValue as string) : null;
+
+      if (!badge) return null;
+
+      if (args.include?.user_badges) {
+        let userBadges = Array.from(memoryStore.userBadges.values()).filter(
+          (ub) => ub.badge_id === badge.id,
+        );
+
+        if (
+          typeof args.include.user_badges === "object" &&
+          args.include.user_badges.orderBy?.granted_at
+        ) {
+          userBadges = sortItems(userBadges, {
+            granted_at: args.include.user_badges.orderBy.granted_at,
+          });
+        }
+
+        const userBadgesWithSettings = userBadges.map((ub) => {
+          const settings = memoryStore.userSettings.get(ub.user_id);
+          return {
+            ...ub,
+            settings: settings
+              ? { user_id: settings.user_id, username: settings.username }
+              : undefined,
+          };
+        });
+
+        return { ...badge, user_badges: userBadgesWithSettings };
+      }
+
+      return badge;
+    },
+  },
+
+  user_badges: {
+    ...createModelOperations<UserBadge>(
+      () => memoryStore.userBadges,
+      () => "id",
+      () => memoryStore.generateId(),
+    ),
+    findFirst: async (args?: {
+      where?: WhereClause<UserBadge>;
+    }): Promise<UserBadge | null> => {
+      for (const item of memoryStore.userBadges.values()) {
+        if (
+          !args?.where ||
+          matchesWhere(item as UserBadge & Record<string, unknown>, args.where)
+        ) {
+          return item;
+        }
+      }
+      return null;
+    },
+    create: async (args: {
+      data: Partial<UserBadge> & { user_id: string; badge_id: string };
+      include?: { badge?: boolean };
+    }): Promise<UserBadge & { badge?: Badge }> => {
+      const id = memoryStore.generateId();
+      const userBadge: UserBadge = {
+        id,
+        user_id: args.data.user_id,
+        badge_id: args.data.badge_id,
+        granted_at: args.data.granted_at || new Date(),
+        granted_by: args.data.granted_by || null,
+      };
+      memoryStore.userBadges.set(id, userBadge);
+
+      if (args.include?.badge) {
+        const badge = memoryStore.badges.get(args.data.badge_id);
+        return { ...userBadge, badge };
+      }
+
+      return userBadge;
+    },
+  },
 
   // Transaction support (simplified - just executes sequentially)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
