@@ -57,43 +57,44 @@ export async function GET(
     }
 
     // Resolve Avatar URL
+    // Priority: 1. Custom Avatar (avatar_path) -> 2. Social Avatar (avatar_url)
     let avatarUrl: string | null = null;
     const meta = settings.users?.raw_user_meta_data as {
       avatar_url?: string;
+      avatar_path?: string;
     } | null;
-    const avatarPath = meta?.avatar_url;
 
-    if (avatarPath) {
-      if (avatarPath.startsWith("http")) {
-        // Public URL (e.g. from Google Auth)
-        avatarUrl = avatarPath;
-      } else {
-        // Storage path: Generate signed URL server-side using Service Role
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-        const serviceRoleKey =
-          process.env.SUPABASE_SERVICE_ROLE_KEY ||
-          process.env.SUPABASE_SERVICE_KEY;
-        const bucket =
-          process.env.NEXT_PUBLIC_SUPABASE_AVATAR_BUCKET || "avatars";
+    // 1. Try to generate signed URL from custom avatar_path
+    if (meta?.avatar_path) {
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const serviceRoleKey =
+        process.env.SUPABASE_SERVICE_ROLE_KEY ||
+        process.env.SUPABASE_SERVICE_KEY;
+      const bucket =
+        process.env.NEXT_PUBLIC_SUPABASE_AVATAR_BUCKET || "avatars";
 
-        if (supabaseUrl && serviceRoleKey) {
-          const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
-            auth: {
-              autoRefreshToken: false,
-              persistSession: false,
-            },
-          });
+      if (supabaseUrl && serviceRoleKey) {
+        const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false,
+          },
+        });
 
-          // Generate a signed URL valid for 1 hour
-          const { data } = await supabaseAdmin.storage
-            .from(bucket)
-            .createSignedUrl(avatarPath, 3600);
+        // Generate a signed URL valid for 1 hour
+        const { data } = await supabaseAdmin.storage
+          .from(bucket)
+          .createSignedUrl(meta.avatar_path, 3600);
 
-          if (data?.signedUrl) {
-            avatarUrl = data.signedUrl;
-          }
+        if (data?.signedUrl) {
+          avatarUrl = data.signedUrl;
         }
       }
+    }
+
+    // 2. Fallback to social provider URL if no custom avatar was successfully resolved
+    if (!avatarUrl && meta?.avatar_url) {
+      avatarUrl = meta.avatar_url;
     }
 
     // Fetch user tasks for stats
