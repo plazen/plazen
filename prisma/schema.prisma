@@ -359,19 +359,23 @@ model tasks {
 }
 
 model UserSettings {
-  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id          String   @unique @db.Uuid
-  timetable_start  Int      @default(8)
-  timetable_end    Int      @default(18)
-  show_time_needle Boolean  @default(true)
-  created_at       DateTime @default(now()) @db.Timestamptz(6)
-  updated_at       DateTime @db.Timestamptz(6)
-  theme            String?  @default("dark")
-  email_updates    Boolean? @default(true)
-  notifications    Boolean? @default(false)
-  telegram_id      String?  @unique
-  timezone_offset  String?
-  users            users    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  id                String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id           String        @unique @db.Uuid
+  timetable_start   Int           @default(8)
+  timetable_end     Int           @default(18)
+  show_time_needle  Boolean       @default(true)
+  created_at        DateTime      @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime      @db.Timestamptz(6)
+  theme             String?       @default("dark")
+  email_updates     Boolean?      @default(true)
+  notifications     Boolean?      @default(false)
+  telegram_id       String?       @unique
+  timezone_offset   String?
+  is_profile_public Boolean       @default(false)
+  username          String?       @unique @db.VarChar(30)
+  bio               String?       @db.VarChar(500)
+  users             users         @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user_badges       user_badges[]
 
   @@schema("public")
 }
@@ -688,5 +692,33 @@ enum Role {
   USER
   ADMIN
 
+  @@schema("public")
+}
+
+/// Badge definitions created and managed by admins
+model badges {
+  id          String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String        @unique @db.VarChar(100)
+  description String?       @db.VarChar(500)
+  icon        String?       @db.VarChar(100)
+  color       String        @default("#3b82f6") @db.VarChar(20)
+  created_at  DateTime      @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime      @default(now()) @db.Timestamptz(6)
+  user_badges user_badges[]
+
+  @@schema("public")
+}
+
+/// Junction table linking users to their earned badges
+model user_badges {
+  id         String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id    String       @db.Uuid
+  badge_id   String       @db.Uuid
+  granted_at DateTime     @default(now()) @db.Timestamptz(6)
+  granted_by String?      @db.Uuid
+  settings   UserSettings @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  badge      badges       @relation(fields: [badge_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, badge_id])
   @@schema("public")
 }

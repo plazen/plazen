@@ -36,6 +36,9 @@ export interface UserSettings {
   notifications: boolean | null;
   telegram_id: string | null;
   timezone_offset: string | null;
+  is_profile_public: boolean;
+  username: string | null;
+  bio: string | null;
 }
 
 export interface RoutineTask {
@@ -158,6 +161,24 @@ export interface User {
   raw_user_meta_data: Record<string, unknown> | null;
 }
 
+export interface Badge {
+  id: string;
+  name: string;
+  description: string | null;
+  icon: string | null;
+  color: string;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface UserBadge {
+  id: string;
+  user_id: string;
+  badge_id: string;
+  granted_at: Date;
+  granted_by: string | null;
+}
+
 // Helper to generate UUIDs
 function generateUUID(): string {
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
@@ -193,6 +214,8 @@ class MemoryStore {
   releaseNotes: Map<string, ReleaseNote> = new Map();
   documentationEntries: Map<string, DocumentationEntry> = new Map();
   notifications: Map<string, Notification> = new Map();
+  badges: Map<string, Badge> = new Map();
+  userBadges: Map<string, UserBadge> = new Map();
 
   constructor() {
     this.seedData();
@@ -230,6 +253,9 @@ class MemoryStore {
       notifications: true,
       telegram_id: null,
       timezone_offset: null,
+      is_profile_public: true,
+      username: "devuser",
+      bio: "Local development user for Plazen",
     });
 
     // Create admin profile for dev user
@@ -339,6 +365,39 @@ class MemoryStore {
       name: "feature",
       color: "#22c55e",
     });
+
+    // Add sample badges
+    const earlyAdopterBadge = generateUUID();
+    this.badges.set(earlyAdopterBadge, {
+      id: earlyAdopterBadge,
+      name: "Early Adopter",
+      description: "Joined Plazen during the early access period",
+      icon: "Star",
+      color: "#f59e0b",
+      created_at: now,
+      updated_at: now,
+    });
+
+    const productivityChampion = generateUUID();
+    this.badges.set(productivityChampion, {
+      id: productivityChampion,
+      name: "Productivity Champion",
+      description: "Completed 100+ tasks",
+      icon: "Trophy",
+      color: "#10b981",
+      created_at: now,
+      updated_at: now,
+    });
+
+    // Grant early adopter badge to dev user
+    const userBadgeId = generateUUID();
+    this.userBadges.set(userBadgeId, {
+      id: userBadgeId,
+      user_id: DEV_USER_ID,
+      badge_id: earlyAdopterBadge,
+      granted_at: now,
+      granted_by: null,
+    });
   }
 
   /**
@@ -387,6 +446,8 @@ class MemoryStore {
     this.releaseNotes.clear();
     this.documentationEntries.clear();
     this.notifications.clear();
+    this.badges.clear();
+    this.userBadges.clear();
     taskIdCounter = BigInt(1);
     this.seedData();
   }

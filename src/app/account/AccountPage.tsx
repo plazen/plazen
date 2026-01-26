@@ -38,6 +38,8 @@ import {
   Link as LinkIcon,
   Unlink,
   AlertTriangle,
+  Globe,
+  ExternalLink,
 } from "lucide-react";
 import { FaApple, FaDiscord, FaGoogle, FaGithub } from "react-icons/fa";
 import Image from "next/image";
@@ -167,6 +169,22 @@ export default function AccountPage() {
     text: string;
   } | null>(null);
   const [connectingCalendar, setConnectingCalendar] = useState(false);
+
+  // Public profile state
+  const [isProfilePublic, setIsProfilePublic] = useState(false);
+  const [profileUsername, setProfileUsername] = useState("");
+  const [tempUsername, setTempUsername] = useState("");
+  const [profileBio, setProfileBio] = useState("");
+  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(
+    null,
+  );
+  const [usernameMessage, setUsernameMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
+  const [savingUsername, setSavingUsername] = useState(false);
+  const [savingBio, setSavingBio] = useState(false);
+  const [savingProfileVisibility, setSavingProfileVisibility] = useState(false);
 
   // Calendar sources state
   const [calendarSources, setCalendarSources] = useState<
@@ -464,6 +482,11 @@ export default function AccountPage() {
       if (response.ok) {
         const data = await response.json();
         setNotifications({ notifications: data.notifications ?? true });
+        // Load public profile settings
+        setIsProfilePublic(data.is_profile_public ?? false);
+        setProfileUsername(data.username ?? "");
+        setTempUsername(data.username ?? "");
+        setProfileBio(data.bio ?? "");
         return data;
       }
     } catch (error) {
@@ -778,6 +801,107 @@ export default function AccountPage() {
     } catch (error) {
       console.error("Failed to save settings:", error);
       setNotifications((prev) => ({ ...prev, [key]: !value }));
+    }
+  };
+
+  const handleUpdateProfileVisibility = async (value: boolean) => {
+    setSavingProfileVisibility(true);
+    const previousValue = isProfilePublic;
+    setIsProfilePublic(value);
+    try {
+      const response = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_profile_public: value }),
+      });
+      if (!response.ok) throw new Error("Failed to update profile visibility");
+      invalidateCache("settings");
+    } catch (error) {
+      console.error("Failed to update profile visibility:", error);
+      setIsProfilePublic(previousValue);
+    } finally {
+      setSavingProfileVisibility(false);
+    }
+  };
+
+  const checkUsernameAvailability = async (username: string) => {
+    if (!username || username.length < 3) {
+      setUsernameAvailable(null);
+      setUsernameMessage(null);
+      return;
+    }
+    try {
+      const response = await fetch(
+        `/api/profile/username/check?username=${encodeURIComponent(username)}`,
+      );
+      const data = await response.json();
+      setUsernameAvailable(data.available && data.valid);
+      if (!data.valid || !data.available) {
+        setUsernameMessage({ type: "error", text: data.message });
+      } else {
+        setUsernameMessage({ type: "success", text: data.message });
+      }
+    } catch (error) {
+      console.error("Failed to check username:", error);
+      setUsernameAvailable(null);
+      setUsernameMessage(null);
+    }
+  };
+
+  const handleUsernameChange = (value: string) => {
+    setTempUsername(value);
+    setUsernameAvailable(null);
+    setUsernameMessage(null);
+  };
+
+  const handleUsernameBlur = () => {
+    if (tempUsername && tempUsername !== profileUsername) {
+      checkUsernameAvailability(tempUsername);
+    }
+  };
+
+  const handleSaveUsername = async () => {
+    if (!tempUsername || tempUsername === profileUsername) return;
+    if (usernameAvailable === false) return;
+
+    setSavingUsername(true);
+    setUsernameMessage(null);
+    try {
+      const response = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: tempUsername }),
+      });
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to save username");
+      }
+      setProfileUsername(tempUsername);
+      setUsernameMessage({ type: "success", text: "Username saved!" });
+      invalidateCache("settings");
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to save username";
+      setUsernameMessage({ type: "error", text: message });
+    } finally {
+      setSavingUsername(false);
+    }
+  };
+
+  const handleSaveBio = async () => {
+    setSavingBio(true);
+    try {
+      const response = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bio: profileBio }),
+      });
+      if (!response.ok) throw new Error("Failed to save bio");
+      invalidateCache("settings");
+    } catch (error) {
+      console.error("Failed to save bio:", error);
+    } finally {
+      setSavingBio(false);
     }
   };
 
@@ -1564,6 +1688,116 @@ export default function AccountPage() {
                 })}
               </div>
             </div>
+          </div>
+
+          {/* Public Profile Section */}
+          <div className="bg-card rounded-xl border border-border p-6 mb-6">
+            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <Globe className="w-5 h-5" /> Public Profile
+            </h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Share your productivity stats with others via a public profile
+              page.
+            </p>
+
+            {/* Toggle for public profile */}
+            <div className="flex items-center justify-between mb-4 pb-4 border-b border-border">
+              <div>
+                <label className="text-sm font-medium">
+                  Make profile public
+                </label>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Allow others to view your profile at plazen.org/u/username
+                </p>
+              </div>
+              <Switch
+                checked={isProfilePublic}
+                onCheckedChange={handleUpdateProfileVisibility}
+              />
+            </div>
+
+            {/* Username and bio fields - only show when public is enabled */}
+            {isProfilePublic && (
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium block mb-2">
+                    Username
+                  </label>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+                        /u/
+                      </span>
+                      <Input
+                        value={tempUsername}
+                        onChange={(e) => handleUsernameChange(e.target.value)}
+                        onBlur={handleUsernameBlur}
+                        className="pl-10"
+                        placeholder="yourname"
+                        maxLength={30}
+                      />
+                    </div>
+                    <Button
+                      onClick={handleSaveUsername}
+                      disabled={
+                        savingUsername ||
+                        !tempUsername ||
+                        tempUsername === profileUsername ||
+                        usernameAvailable === false
+                      }
+                      size="sm"
+                    >
+                      {savingUsername ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        "Save"
+                      )}
+                    </Button>
+                  </div>
+                  {usernameMessage && (
+                    <p
+                      className={`text-xs mt-1 ${
+                        usernameMessage.type === "error"
+                          ? "text-destructive"
+                          : "text-green-600"
+                      }`}
+                    >
+                      {usernameMessage.text}
+                    </p>
+                  )}
+                </div>
+
+                {/* Bio field */}
+                <div>
+                  <label className="text-sm font-medium block mb-2">Bio</label>
+                  <textarea
+                    value={profileBio}
+                    onChange={(e) => setProfileBio(e.target.value)}
+                    onBlur={handleSaveBio}
+                    className="w-full h-20 p-3 rounded-md border border-input bg-background text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+                    placeholder="A short description about yourself..."
+                    maxLength={500}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {profileBio.length}/500
+                  </p>
+                </div>
+
+                {/* Preview link */}
+                {profileUsername && (
+                  <div className="flex items-center gap-2 pt-2">
+                    <Link
+                      href={`/u/${profileUsername}`}
+                      className="text-sm text-primary hover:underline flex items-center gap-1"
+                      target="_blank"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      View your public profile
+                    </Link>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
