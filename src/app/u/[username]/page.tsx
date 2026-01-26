@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import prisma from "@/lib/prisma";
 import PublicProfileClient from "./PublicProfileClient";
 import type { PublicProfile } from "@/types/profile";
+import { createClient } from "@supabase/supabase-js";
 
 interface PageProps {
   params: Promise<{ username: string }>;
@@ -12,12 +13,19 @@ async function getPublicProfile(
   username: string,
 ): Promise<PublicProfile | null> {
   try {
+    // 1. Fetch settings AND user metadata/creation date in one query
     const settings = await prisma.userSettings.findFirst({
       where: {
         username: username.toLowerCase(),
         is_profile_public: true,
       },
       include: {
+        users: {
+          select: {
+            raw_user_meta_data: true,
+            created_at: true,
+          },
+        },
         user_badges: {
           include: {
             badge: true,
@@ -33,42 +41,64 @@ async function getPublicProfile(
       return null;
     }
 
-    const [tasksResult, userResult] = await Promise.all([
-      prisma.tasks.findMany({
-        where: { user_id: settings.user_id },
-        select: {
-          is_completed: true,
-          scheduled_time: true,
-        },
-      }),
-      prisma.users.findUnique({
-        where: { id: settings.user_id },
-        select: { created_at: true },
-      }),
-    ]);
+    // 2. Resolve Avatar URL
+    let avatarUrl: string | null = null;
+    const meta = settings.users?.raw_user_meta_data as {
+      avatar_url?: string;
+    } | null;
+    const avatarPath = meta?.avatar_url;
+
+    if (avatarPath) {
+      if (avatarPath.startsWith("http")) {
+        // Public URL (e.g. from Google Auth)
+        avatarUrl = avatarPath;
+      } else {
+        // Storage path: Generate signed URL server-side
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        const serviceRoleKey =
+          process.env.SUPABASE_SERVICE_ROLE_KEY ||
+          process.env.SUPABASE_SERVICE_KEY;
+        const bucket =
+          process.env.NEXT_PUBLIC_SUPABASE_AVATAR_BUCKET || "avatars";
+
+        if (supabaseUrl && serviceRoleKey) {
+          const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
+            auth: {
+              autoRefreshToken: false,
+              persistSession: false,
+            },
+          });
+
+          // Generate a signed URL valid for 1 hour
+          const { data } = await supabaseAdmin.storage
+            .from(bucket)
+            .createSignedUrl(avatarPath, 3600);
+
+          if (data?.signedUrl) {
+            avatarUrl = data.signedUrl;
+          }
+        }
+      }
+    }
+
+    // 3. Fetch tasks for stats
+    const tasksResult = await prisma.tasks.findMany({
+      where: { user_id: settings.user_id },
+      select: {
+        is_completed: true,
+        scheduled_time: true,
+      },
+    });
 
     const completedTasks = tasksResult.filter((t) => t.is_completed).length;
     const currentStreak = calculateDailyStreak(tasksResult);
 
-    // Handle user_badges safely - it may not exist if migration hasn't run
-    const userBadges =
-      (
-        settings as {
-          user_badges?: Array<{
-            badge: {
-              name: string;
-              description: string | null;
-              icon: string | null;
-              color: string;
-            };
-            granted_at: Date;
-          }>;
-        }
-      ).user_badges ?? [];
+    const userBadges = settings.user_badges ?? [];
 
     return {
       username: settings.username!,
       bio: settings.bio,
+      avatarUrl, // Added this field
       badges: userBadges.map((ub) => ({
         name: ub.badge.name,
         description: ub.badge.description,
@@ -79,7 +109,7 @@ async function getPublicProfile(
       stats: {
         totalTasksCompleted: completedTasks,
         currentStreak: currentStreak,
-        memberSince: userResult?.created_at?.toISOString() ?? null,
+        memberSince: settings.users?.created_at?.toISOString() ?? null,
       },
     };
   } catch (error) {
@@ -150,6 +180,7 @@ export async function generateMetadata({
         profile.bio ||
         `${profile.stats.totalTasksCompleted} tasks completed, ${profile.stats.currentStreak} day streak`,
       type: "profile",
+      images: profile.avatarUrl ? [profile.avatarUrl] : [],
     },
   };
 }

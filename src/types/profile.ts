@@ -1,6 +1,7 @@
 export interface PublicProfile {
   username: string;
   bio: string | null;
+  avatarUrl: string | null;
   badges: Badge[];
   stats: PublicStats;
 }
