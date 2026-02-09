@@ -230,18 +230,8 @@ export default function PricingPage() {
                     For power users and supporters.
                   </p>
                   <div className="mt-6 flex items-baseline gap-3">
-                    <span className="text-2xl font-semibold text-muted-foreground line-through">
-                      $5
-                    </span>
-                    <span className="text-4xl font-bold text-primary">
-                      $2.5
-                    </span>
+                    <span className="text-4xl font-bold text-primary">$5</span>
                     <span className="text-muted-foreground ml-2">/ month</span>
-                  </div>
-                  <div className="mt-2">
-                    <span className="text-xs text-primary-dark font-medium bg-green-50 px-2 py-1 rounded">
-                      50% off until January 31!
-                    </span>
                   </div>
                 </div>
 
