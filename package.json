@@ -38,7 +38,7 @@
     "react-markdown": "^10.1.0",
     "striptags": "^3.2.0",
     "tailwind-merge": "^3.4.0",
-    "ts-caldav": "^0.2.7"
+    "ts-caldav": "^0.2.8"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
